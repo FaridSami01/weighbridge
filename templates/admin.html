@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>{{ t.admin_panel }}</h1>
+<button>{{ t.add }}</button>
+
+<ul>
+    <li><a href="/admin/vendors">{{ t.manage_vendors }}</a></li>
+    <li><a href="/admin/stock">{{ t.manage_stock }}</a></li>
+    <li>{{ t.intake_packing_edit_note }}</li>
+</ul>
+
+{% endblock %}

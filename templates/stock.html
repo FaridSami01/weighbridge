@@ -1,0 +1,757 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.stock-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+/* Summary Cards */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.summary-card.flour {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.summary-card.bran {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.summary-card.bags {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.summary-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.summary-card .value {
+    font-size: 36px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.summary-card .unit {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.tab {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.tab.active {
+    color: #3498db;
+    border-bottom-color: #3498db;
+}
+
+.tab:hover {
+    color: #3498db;
+    background: #f8f9fa;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Stock Cards */
+.stock-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stock-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+.stock-card:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-color: #3498db;
+}
+
+.stock-card h3 {
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    color: #2c3e50;
+}
+
+.stock-info {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.stock-quantity {
+    font-size: 32px;
+    font-weight: bold;
+    color: #3498db;
+    margin: 15px 0;
+}
+
+.stock-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-good {
+    background: #e8f5e9;
+    color: #27ae60;
+}
+
+.status-low {
+    background: #fff3e0;
+    color: #f39c12;
+}
+
+.status-critical {
+    background: #ffebee;
+    color: #e74c3c;
+}
+
+/* Table */
+.section-card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    margin-bottom: 25px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.table-container {
+    overflow-x: auto;
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table thead {
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.data-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: #27ae60;
+    color: white;
+}
+
+.btn-warning {
+    background: #f39c12;
+    color: white;
+}
+
+.btn-danger {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+/* Filters */
+.filters {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-item label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+}
+
+.filter-item select,
+.filter-item input {
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+}
+</style>
+
+<div class="stock-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">📦 {{ t.stock_control }}</h1>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-primary" onclick="showAdjustModal()">
+                ➕ {{ t.adjust_stock }}
+            </button>
+            <button class="btn btn-success" onclick="window.print()">
+                🖨️ {{ t.print }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="summary-card flour">
+            <h3>🌾 {{ t.total_flour }}</h3>
+            <div class="value" id="totalFlour">0</div>
+            <div class="unit">{{ t.kg }}</div>
+        </div>
+        
+        <div class="summary-card bran">
+            <h3>🥖 {{ t.total_bran }}</h3>
+            <div class="value" id="totalBran">0</div>
+            <div class="unit">{{ t.kg }}</div>
+        </div>
+        
+        <div class="summary-card bags">
+            <h3>🛍️ {{ t.total_bags }}</h3>
+            <div class="value" id="totalBags">0</div>
+            <div class="unit">{{ t.bags }}</div>
+        </div>
+        
+        <div class="summary-card">
+            <h3>⚠️ {{ t.low_stock }}</h3>
+            <div class="value" id="lowStockCount">0</div>
+            <div class="unit">{{ t.items }}</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('products')">
+            📊 {{ t.products_stock }}
+        </button>
+        <button class="tab" onclick="switchTab('movements')">
+            📝 {{ t.stock_movements }}
+        </button>
+        <button class="tab" onclick="switchTab('alerts')">
+            ⚠️ {{ t.low_stock_alerts }}
+        </button>
+    </div>
+
+    <!-- Tab 1: Products Stock -->
+    <div id="tab-products" class="tab-content active">
+        <div class="section-card">
+            <div class="section-header">
+                <h2 class="section-title">{{ t.current_stock }}</h2>
+                <div class="filters">
+                    <div class="filter-item">
+                        <label>{{ t.product_type }}</label>
+                        <select id="filterProductType" onchange="loadStock()">
+                            <option value="">{{ t.all }}</option>
+                            <option value="flour">{{ t.flour }}</option>
+                            <option value="bran">{{ t.bran }}</option>
+                            <option value="bags">{{ t.bags }}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stock-grid" id="stockGrid">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: Stock Movements -->
+    <div id="tab-movements" class="tab-content">
+        <div class="section-card">
+            <div class="section-header">
+                <h2 class="section-title">{{ t.recent_movements }}</h2>
+                <div class="filters">
+                    <div class="filter-item">
+                        <label>{{ t.from_date }}</label>
+                        <input type="date" id="filterStartDate" onchange="loadMovements()">
+                    </div>
+                    <div class="filter-item">
+                        <label>{{ t.to_date }}</label>
+                        <input type="date" id="filterEndDate" onchange="loadMovements()">
+                    </div>
+                    <div class="filter-item">
+                        <label>{{ t.movement_type }}</label>
+                        <select id="filterMovementType" onchange="loadMovements()">
+                            <option value="">{{ t.all }}</option>
+                            <option value="in">{{ t.stock_in }}</option>
+                            <option value="out">{{ t.stock_out }}</option>
+                            <option value="adjustment">{{ t.adjustment }}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ t.date }}</th>
+                            <th>{{ t.product }}</th>
+                            <th>{{ t.type }}</th>
+                            <th>{{ t.quantity }}</th>
+                            <th>{{ t.balance }}</th>
+                            <th>{{ t.notes }}</th>
+                            <th>{{ t.operator }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="movementsTable">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Low Stock Alerts -->
+    <div id="tab-alerts" class="tab-content">
+        <div class="section-card">
+            <div class="section-header">
+                <h2 class="section-title">⚠️ {{ t.items_running_low }}</h2>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ t.product }}</th>
+                            <th>{{ t.current_stock }}</th>
+                            <th>{{ t.minimum_level }}</th>
+                            <th>{{ t.deficit }}</th>
+                            <th>{{ t.status }}</th>
+                            <th>{{ t.actions }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alertsTable">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Adjust Stock Modal -->
+<div class="modal" id="adjustModal">
+    <div class="modal-content">
+        <div class="modal-header">{{ t.adjust_stock }}</div>
+        <form id="adjustForm" onsubmit="submitAdjustment(event)">
+            <div class="form-group">
+                <label>{{ t.product }} *</label>
+                <select name="product_id" required id="productSelect">
+                    <option value="">{{ t.select }}...</option>
+                    <!-- Populated by JavaScript -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>{{ t.movement_type }} *</label>
+                <select name="movement_type" required>
+                    <option value="in">{{ t.stock_in }} (+)</option>
+                    <option value="out">{{ t.stock_out }} (-)</option>
+                    <option value="adjustment">{{ t.adjustment }}</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>{{ t.quantity }} *</label>
+                <input type="number" name="quantity" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+                <label>{{ t.notes }}</label>
+                <textarea name="notes" rows="3"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    💾 {{ t.save }}
+                </button>
+                <button type="button" class="btn btn-danger" style="flex: 1;" onclick="closeModal('adjustModal')">
+                    ❌ {{ t.cancel }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Initialize
+window.addEventListener('DOMContentLoaded', function() {
+    setDefaultDates();
+    loadSummary();
+    loadStock();
+    loadMovements();
+    loadAlerts();
+    populateProductDropdown();
+});
+
+function setDefaultDates() {
+    const today = new Date().toISOString().split('T')[0];
+    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    
+    document.getElementById('filterStartDate').value = firstDay;
+    document.getElementById('filterEndDate').value = today;
+}
+
+function switchTab(tabName) {
+    // Update tabs
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Update content
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tabName).classList.add('active');
+}
+
+function loadSummary() {
+    fetch('/api/stock/summary')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('totalFlour').textContent = data.total_flour.toLocaleString();
+            document.getElementById('totalBran').textContent = data.total_bran.toLocaleString();
+            document.getElementById('totalBags').textContent = data.total_bags.toLocaleString();
+            document.getElementById('lowStockCount').textContent = data.low_stock_count;
+        })
+        .catch(err => console.error('Summary error:', err));
+}
+
+function loadStock() {
+    const productType = document.getElementById('filterProductType').value;
+    
+    fetch(`/api/stock?type=${productType}`)
+        .then(r => r.json())
+        .then(data => {
+            const grid = document.getElementById('stockGrid');
+            grid.innerHTML = '';
+            
+            data.products.forEach(product => {
+                const stockLevel = product.quantity >= product.min_level ? 'good' : 
+                                  product.quantity >= (product.min_level * 0.5) ? 'low' : 'critical';
+                const statusText = stockLevel === 'good' ? '✅ {{ t.ok }}' :
+                                  stockLevel === 'low' ? '⚠️ {{ t.low }}' : '🔴 {{ t.critical }}';
+                
+                const card = `
+                    <div class="stock-card">
+                        <h3>${product.product_name}</h3>
+                        <div class="stock-info"><strong>{{ t.code }}:</strong> ${product.product_code}</div>
+                        <div class="stock-info"><strong>{{ t.category }}:</strong> ${product.category}</div>
+                        <div class="stock-quantity">${product.quantity.toLocaleString()} ${product.unit}</div>
+                        <div class="stock-info">
+                            {{ t.minimum }}: ${product.min_level} ${product.unit}
+                        </div>
+                        <div class="stock-status status-${stockLevel}">${statusText}</div>
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-primary btn-sm" onclick="adjustProduct(${product.id})">
+                                ➕➖ {{ t.adjust }}
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += card;
+            });
+        })
+        .catch(err => console.error('Stock error:', err));
+}
+
+function loadMovements() {
+    const start = document.getElementById('filterStartDate').value;
+    const end = document.getElementById('filterEndDate').value;
+    const type = document.getElementById('filterMovementType').value;
+    
+    fetch(`/api/stock/movements?start=${start}&end=${end}&type=${type}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('movementsTable');
+            tbody.innerHTML = '';
+            
+            data.movements.forEach(move => {
+                const typeIcon = move.movement_type === 'in' ? '⬆️' : 
+                                move.movement_type === 'out' ? '⬇️' : '↔️';
+                const qtyColor = move.movement_type === 'in' ? 'green' : 
+                                move.movement_type === 'out' ? 'red' : 'blue';
+                
+                const row = `
+                    <tr>
+                        <td>${move.movement_date}</td>
+                        <td>${move.product_name}</td>
+                        <td>${typeIcon} ${move.movement_type.toUpperCase()}</td>
+                        <td style="color: ${qtyColor}; font-weight: bold;">
+                            ${move.movement_type === 'out' ? '-' : '+'}${move.quantity}
+                        </td>
+                        <td>${move.balance_after.toLocaleString()}</td>
+                        <td>${move.notes || '-'}</td>
+                        <td>${move.created_by || '-'}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        })
+        .catch(err => console.error('Movements error:', err));
+}
+
+function loadAlerts() {
+    fetch('/api/stock/alerts')
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('alertsTable');
+            tbody.innerHTML = '';
+            
+            data.alerts.forEach(alert => {
+                const deficit = alert.min_level - alert.quantity;
+                const severity = alert.quantity === 0 ? 'critical' :
+                                alert.quantity < (alert.min_level * 0.5) ? 'critical' : 'low';
+                
+                const row = `
+                    <tr>
+                        <td>${alert.product_name}</td>
+                        <td style="font-weight: bold;">${alert.quantity} ${alert.unit}</td>
+                        <td>${alert.min_level} ${alert.unit}</td>
+                        <td style="color: red; font-weight: bold;">${deficit} ${alert.unit}</td>
+                        <td>
+                            <span class="stock-status status-${severity}">
+                                ${severity === 'critical' ? '🔴 {{ t.critical }}' : '⚠️ {{ t.low }}'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="adjustProduct(${alert.id})">
+                                ➕ {{ t.restock }}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            if (data.alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 30px;">✅ {{ t.all_stock_good }}</td></tr>';
+            }
+        })
+        .catch(err => console.error('Alerts error:', err));
+}
+
+function populateProductDropdown() {
+    fetch('/api/stock')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('productSelect');
+            data.products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.id;
+                option.textContent = `${product.product_code} - ${product.product_name}`;
+                select.appendChild(option);
+            });
+        });
+}
+
+function showAdjustModal() {
+    document.getElementById('adjustModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+function adjustProduct(productId) {
+    document.getElementById('productSelect').value = productId;
+    showAdjustModal();
+}
+
+function submitAdjustment(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData);
+    
+    fetch('/api/stock/adjust', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            closeModal('adjustModal');
+            event.target.reset();
+            loadSummary();
+            loadStock();
+            loadMovements();
+            loadAlerts();
+            alert('{{ t.stock_adjusted_successfully }}!');
+        }
+    })
+    .catch(err => console.error('Submit error:', err));
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t.vendors }}</h1>
+<button>{{ t.add }}</button>
+<form method="post">
+    <input name="name" placeholder="Vendor name" required>
+    <button>Add</button>
+</form>
+
+<ul>
+{% for v in vendors %}
+    <li>{{ v.name }}</li>
+{% endfor %}
+</ul>
+{% endblock %}

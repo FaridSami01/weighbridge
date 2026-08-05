@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ t.mill_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="front-body">
+
+<div class="front-overlay">
+    <div class="front-box">
+        <h1>{{ t.mill_name }}</h1>
+        <p>{{ t.mill_name_ar }}</p>
+
+        <a href="/login" class="front-btn">
+            {{ t.enter_system }}
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

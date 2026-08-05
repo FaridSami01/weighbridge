@@ -1,0 +1,1006 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.accounting-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transition: transform 0.3s;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+}
+
+.summary-card.revenue {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.summary-card.expenses {
+    background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+}
+
+.summary-card.profit {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.summary-card.milling {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.card-label {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.card-value {
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.card-subtext {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.section-card {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.rate-item {
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    transition: border-color 0.3s;
+}
+
+.rate-item:hover {
+    border-color: #667eea;
+}
+
+.rate-item.editable {
+    background: #f8f9fa;
+}
+
+.rate-label {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.rate-value {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rate-value input {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.rate-value .unit {
+    color: #666;
+    font-size: 14px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* FIX #2: Add max-height and scroll to tables */
+.table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table thead {
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.data-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.data-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.data-table tfoot {
+    position: sticky;
+    bottom: 0;
+    background: #f8f9fa;
+    font-weight: bold;
+}
+
+/* FIX #3: Fix chart container heights */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.chart-card {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    height: 350px; /* Fixed height */
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.chart-canvas-container {
+    flex: 1;
+    position: relative;
+    min-height: 0; /* Important for flex */
+}
+
+.chart-canvas-container canvas {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.filters-bar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-item label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+}
+
+.filter-item input,
+.filter-item select {
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+/* RTL Support */
+[dir="rtl"] .data-table th,
+[dir="rtl"] .data-table td {
+    text-align: right;
+}
+
+[dir="rtl"] .rate-value {
+    flex-direction: row-reverse;
+}
+</style>
+
+<div class="accounting-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>📊 {{ t.accounting }}</h1>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-primary" onclick="window.print()">
+                🖨️ {{ t.print }}
+            </button>
+            <button class="btn btn-success" onclick="exportToExcel()">
+                📥 {{ t.export_excel }}
+            </button>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="summary-card milling">
+            <div class="card-label">{{ t.milled_today }}</div>
+            <div class="card-value" id="milledToday">0 {{ t.tons }}</div>
+            <div class="card-subtext">{{ t.daily_capacity }}: 120 {{ t.tons }}</div>
+        </div>
+        
+        <div class="summary-card revenue">
+            <div class="card-label">{{ t.total_revenue }}</div>
+            <div class="card-value" id="totalRevenue">LE 0</div>
+            <div class="card-subtext">{{ t.this_month }}</div>
+        </div>
+        
+        <div class="summary-card expenses">
+            <div class="card-label">{{ t.total_expenses }}</div>
+            <div class="card-value" id="totalExpenses">LE 0</div>
+            <div class="card-subtext">{{ t.this_month }}</div>
+        </div>
+        
+        <div class="summary-card profit">
+            <div class="card-label">{{ t.net_profit }}</div>
+            <div class="card-value" id="netProfit">LE 0</div>
+            <div class="card-subtext">{{ t.this_month }}</div>
+        </div>
+    </div>
+    
+    <!-- Charts Grid - FIX #3: Move charts to dashboard -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-title">{{ t.revenue_breakdown }}</div>
+            <div class="chart-canvas-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="chart-title">{{ t.expense_breakdown }}</div>
+            <div class="chart-canvas-container">
+                <canvas id="expenseChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="chart-title">{{ t.monthly_trend }}</div>
+            <div class="chart-canvas-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="chart-title">{{ t.profit_analysis }}</div>
+            <div class="chart-canvas-container">
+                <canvas id="profitChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Editable Rates Section -->
+    <div class="section-card">
+        <div class="section-title">
+            ⚙️ {{ t.pricing_configuration }}
+        </div>
+        
+        <div class="rates-grid">
+            <div class="rate-item editable">
+                <div class="rate-label">{{ t.milling_fee }}</div>
+                <div class="rate-value">
+                    <input type="number" id="millingFee" value="770" step="10">
+                    <span class="unit">LE / {{ t.ton }}</span>
+                </div>
+            </div>
+            
+            <div class="rate-item editable">
+                <div class="rate-label">{{ t.coarse_bran_share }}</div>
+                <div class="rate-value">
+                    <input type="number" id="branShare" value="15" step="1">
+                    <span class="unit">%</span>
+                </div>
+            </div>
+            
+            <div class="rate-item editable">
+                <div class="rate-label">{{ t.coarse_bran_price }}</div>
+                <div class="rate-value">
+                    <input type="number" id="branPrice" value="11000" step="100">
+                    <span class="unit">LE / {{ t.ton }}</span>
+                </div>
+            </div>
+            
+            <div class="rate-item editable">
+                <div class="rate-label">{{ t.weighbridge_fee }}</div>
+                <div class="rate-value">
+                    <input type="number" id="weighbridgeFee" value="10" step="1">
+                    <span class="unit">LE / {{ t.weighing }}</span>
+                </div>
+            </div>
+            
+            <div class="rate-item">
+                <div class="rate-label">{{ t.extraction_rate }}</div>
+                <div class="rate-value">
+                    <input type="number" id="extractionRate" value="87.5" step="0.1" readonly style="background: #e9ecef;">
+                    <span class="unit">%</span>
+                </div>
+            </div>
+        </div>
+        
+        <button class="btn btn-primary" onclick="saveRates()">
+            💾 {{ t.save_rates }}
+        </button>
+    </div>
+    
+    <!-- Revenue Breakdown -->
+    <div class="section-card">
+        <div class="section-title">
+            💰 {{ t.revenue_sources }}
+        </div>
+        
+        <div class="filters-bar">
+            <div class="filter-item">
+                <label>{{ t.from_date }}</label>
+                <input type="date" id="revenueStartDate" onchange="loadRevenue()">
+            </div>
+            <div class="filter-item">
+                <label>{{ t.to_date }}</label>
+                <input type="date" id="revenueEndDate" onchange="loadRevenue()">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="loadRevenue()">
+                {{ t.apply }}
+            </button>
+        </div>
+        
+        <!-- FIX #2: Add container with max-height -->
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{{ t.revenue_source }}</th>
+                        <th>{{ t.quantity }}</th>
+                        <th>{{ t.rate }}</th>
+                        <th>{{ t.amount }}</th>
+                        <th>{{ t.percentage }}</th>
+                        <th>{{ t.actions if t else 'Actions' }}</th>
+                    </tr>
+                </thead>
+                <tbody id="revenueTable">
+                    <!-- Populated by JS -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">{{ t.total }}</td>
+                        <td id="revenueTotal">LE 0</td>
+                        <td>100%</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <button class="btn btn-primary" onclick="showAddRevenueModal()">
+                ➕ {{ t.add_other_revenue }}
+            </button>
+        </div>
+    </div>
+    
+    <!-- Expenses Section -->
+    <div class="section-card">
+        <div class="section-title">
+            💳 {{ t.expenses }}
+        </div>
+        
+        <div class="filters-bar">
+            <div class="filter-item">
+                <label>{{ t.from_date }}</label>
+                <input type="date" id="expenseStartDate" onchange="loadExpenses()">
+            </div>
+            <div class="filter-item">
+                <label>{{ t.to_date }}</label>
+                <input type="date" id="expenseEndDate" onchange="loadExpenses()">
+            </div>
+            <div class="filter-item">
+                <label>{{ t.category }}</label>
+                <select id="expenseCategory" onchange="loadExpenses()">
+                    <option value="">{{ t.all }}</option>
+                    <option value="labor">{{ t.labor }}</option>
+                    <option value="transport">{{ t.wheat_transport }}</option>
+                    <option value="bags">{{ t.bags }}</option>
+                    <option value="electricity">{{ t.electricity }}</option>
+                    <option value="water">{{ t.water }}</option>
+                    <option value="maintenance">{{ t.maintenance }}</option>
+                </select>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="loadExpenses()">
+                {{ t.apply }}
+            </button>
+        </div>
+        
+        <!-- FIX #2: Add container with max-height -->
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{{ t.date }}</th>
+                        <th>{{ t.category }}</th>
+                        <th>{{ t.description }}</th>
+                        <th>{{ t.amount }}</th>
+                        <th>{{ t.actions }}</th>
+                    </tr>
+                </thead>
+                <tbody id="expensesTable">
+                    <!-- Populated by JS -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">{{ t.total }}</td>
+                        <td id="expensesTotal">LE 0</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <button class="btn btn-primary" onclick="showAddExpenseModal()">
+                ➕ {{ t.add_expense }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Revenue Modal -->
+<div class="modal" id="addRevenueModal">
+    <div class="modal-content">
+        <div class="modal-header">{{ t.add_other_revenue }}</div>
+        <form id="revenueForm" onsubmit="submitRevenue(event)">
+            <div class="form-group">
+                <label>{{ t.date }}</label>
+                <input type="date" name="date" required>
+            </div>
+            <div class="form-group">
+                <label>{{ t.description }}</label>
+                <input type="text" name="description" required placeholder="{{ t.revenue_description_placeholder }}">
+            </div>
+            <div class="form-group">
+                <label>{{ t.amount }} (LE)</label>
+                <input type="number" name="amount" required step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label>{{ t.notes }}</label>
+                <textarea name="notes" rows="3"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    💾 {{ t.save }}
+                </button>
+                <button type="button" class="btn btn-danger" style="flex: 1;" onclick="closeModal('addRevenueModal')">
+                    ❌ {{ t.cancel }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div class="modal" id="addExpenseModal">
+    <div class="modal-content">
+        <div class="modal-header">{{ t.add_expense }}</div>
+        <form id="expenseForm" onsubmit="submitExpense(event)">
+            <div class="form-group">
+                <label>{{ t.date }}</label>
+                <input type="date" name="date" required>
+            </div>
+            <div class="form-group">
+                <label>{{ t.category }}</label>
+                <select name="category" required>
+                    <option value="">{{ t.select_category }}</option>
+                    <option value="labor">{{ t.labor }}</option>
+                    <option value="transport">{{ t.wheat_transport }}</option>
+                    <option value="bags">{{ t.bags }}</option>
+                    <option value="electricity">{{ t.electricity }}</option>
+                    <option value="water">{{ t.water }}</option>
+                    <option value="maintenance">{{ t.maintenance }}</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>{{ t.description }}</label>
+                <input type="text" name="description" required>
+            </div>
+            <div class="form-group">
+                <label>{{ t.amount }} (LE)</label>
+                <input type="number" name="amount" required step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label>{{ t.notes }}</label>
+                <textarea name="notes" rows="3"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    💾 {{ t.save }}
+                </button>
+                <button type="button" class="btn btn-danger" style="flex: 1;" onclick="closeModal('addExpenseModal')">
+                    ❌ {{ t.cancel }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Initialize
+window.addEventListener('DOMContentLoaded', function() {
+    setDefaultDates();
+    loadSummary();
+    loadRevenue();
+    loadExpenses();
+    // FIX #3: Load charts after a short delay to ensure containers are ready
+    setTimeout(loadCharts, 100);
+});
+
+function setDefaultDates() {
+    const today = new Date().toISOString().split('T')[0];
+    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    
+    document.getElementById('revenueStartDate').value = firstDay;
+    document.getElementById('revenueEndDate').value = today;
+    document.getElementById('expenseStartDate').value = firstDay;
+    document.getElementById('expenseEndDate').value = today;
+}
+
+function loadSummary() {
+    fetch('/api/accounting/summary')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('milledToday').textContent = data.milled_today.toFixed(1) + ' {{ t.tons }}';
+            document.getElementById('totalRevenue').textContent = 'LE ' + data.revenue.toLocaleString();
+            document.getElementById('totalExpenses').textContent = 'LE ' + data.expenses.toLocaleString();
+            document.getElementById('netProfit').textContent = 'LE ' + data.profit.toLocaleString();
+        })
+        .catch(err => console.error('Summary error:', err));
+}
+
+function saveRates() {
+    const rates = {
+        milling_fee: document.getElementById('millingFee').value,
+        bran_share: document.getElementById('branShare').value,
+        bran_price: document.getElementById('branPrice').value,
+        weighbridge_fee: document.getElementById('weighbridgeFee').value
+    };
+    
+    fetch('/api/accounting/rates', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(rates)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('{{ t.rates_saved }}');
+            loadRevenue();
+        }
+    })
+    .catch(err => console.error('Save rates error:', err));
+}
+
+function loadRevenue() {
+    const start = document.getElementById('revenueStartDate').value;
+    const end = document.getElementById('revenueEndDate').value;
+    
+    fetch(`/api/accounting/revenue?start=${start}&end=${end}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('revenueTable');
+            tbody.innerHTML = '';
+            
+            let total = 0;
+            
+            // Check if sources exist and is array
+            const sources = data.sources || [];
+            
+            sources.forEach(source => {
+                total += source.amount;
+                const row = `
+                    <tr>
+                        <td>${source.name}</td>
+                        <td>${source.quantity}</td>
+                        <td>${source.rate}</td>
+                        <td>LE ${source.amount.toLocaleString()}</td>
+                        <td>${source.percentage}%</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteRevenue(${source.id})">
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            document.getElementById('revenueTotal').textContent = 'LE ' + total.toLocaleString();
+        })
+        .catch(err => {
+            console.error('Revenue error:', err);
+            const tbody = document.getElementById('revenueTable');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Error loading revenue</td></tr>';
+        });
+}
+
+function loadExpenses() {
+    const start = document.getElementById('expenseStartDate').value;
+    const end = document.getElementById('expenseEndDate').value;
+    const category = document.getElementById('expenseCategory').value;
+    
+    fetch(`/api/accounting/expenses?start=${start}&end=${end}&category=${category}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('expensesTable');
+            tbody.innerHTML = '';
+            
+            let total = 0;
+            data.expenses.forEach(expense => {
+                total += expense.amount;
+                const row = `
+                    <tr>
+                        <td>${expense.date}</td>
+                        <td>${expense.category}</td>
+                        <td>${expense.description}</td>
+                        <td>LE ${expense.amount.toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteExpense(${expense.id})">
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            document.getElementById('expensesTotal').textContent = 'LE ' + total.toLocaleString();
+        })
+        .catch(err => console.error('Expenses error:', err));
+}
+
+function showAddRevenueModal() {
+    document.getElementById('addRevenueModal').classList.add('active');
+}
+
+function showAddExpenseModal() {
+    document.getElementById('addExpenseModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+function submitRevenue(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData);
+    
+    fetch('/api/accounting/revenue', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            closeModal('addRevenueModal');
+            event.target.reset();
+            loadRevenue();
+            loadSummary();
+        }
+    })
+    .catch(err => console.error('Submit revenue error:', err));
+}
+
+function submitExpense(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData);
+    
+    fetch('/api/accounting/expenses', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            closeModal('addExpenseModal');
+            event.target.reset();
+            loadExpenses();
+            loadSummary();
+            loadCharts(); // Reload charts after adding expense
+        }
+    })
+    .catch(err => console.error('Submit expense error:', err));
+}
+
+function deleteExpense(id) {
+    if (confirm('{{ t.confirm_delete }}')) {
+        fetch(`/api/accounting/expenses/${id}`, {method: 'DELETE'})
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    loadExpenses();
+                    loadSummary();
+                    loadCharts(); // Reload charts after deleting expense
+                }
+            })
+            .catch(err => console.error('Delete error:', err));
+    }
+}
+
+function deleteRevenue(id) {
+    if (confirm('{{ t.confirm_delete if t else "Are you sure you want to delete this revenue entry?" }}')) {
+        fetch(`/api/accounting/revenue/${id}`, {method: 'DELETE'})
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    loadRevenue();
+                    loadSummary();
+                    loadCharts(); // Reload charts after deleting revenue
+                }
+            })
+            .catch(err => console.error('Delete revenue error:', err));
+    }
+}
+
+// FIX #3: Properly destroy and recreate charts
+let revenueChartInstance = null;
+let expenseChartInstance = null;
+let trendChartInstance = null;
+let profitChartInstance = null;
+
+function loadCharts() {
+    // Revenue breakdown pie chart
+    fetch('/api/accounting/charts/revenue')
+        .then(r => r.json())
+        .then(data => {
+            if (revenueChartInstance) revenueChartInstance.destroy();
+            const ctx = document.getElementById('revenueChart');
+            revenueChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.values,
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {position: 'bottom'}
+                    }
+                }
+            });
+        })
+        .catch(err => console.error('Revenue chart error:', err));
+    
+    // Expense breakdown pie chart
+    fetch('/api/accounting/charts/expenses')
+        .then(r => r.json())
+        .then(data => {
+            if (expenseChartInstance) expenseChartInstance.destroy();
+            const ctx = document.getElementById('expenseChart');
+            expenseChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.values,
+                        backgroundColor: ['#ee0979', '#ff6a00', '#f093fb', '#764ba2', '#667eea', '#4facfe']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {position: 'bottom'}
+                    }
+                }
+            });
+        })
+        .catch(err => console.error('Expense chart error:', err));
+    
+    // Monthly trend line chart
+    fetch('/api/accounting/charts/trend')
+        .then(r => r.json())
+        .then(data => {
+            if (trendChartInstance) trendChartInstance.destroy();
+            const ctx = document.getElementById('trendChart');
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.months,
+                    datasets: [{
+                        label: '{{ t.revenue }}',
+                        data: data.revenue,
+                        borderColor: '#11998e',
+                        backgroundColor: 'rgba(17, 153, 142, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: '{{ t.expenses }}',
+                        data: data.expenses,
+                        borderColor: '#ee0979',
+                        backgroundColor: 'rgba(238, 9, 121, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        })
+        .catch(err => console.error('Trend chart error:', err));
+    
+    // Profit bar chart
+    fetch('/api/accounting/charts/profit')
+        .then(r => r.json())
+        .then(data => {
+            if (profitChartInstance) profitChartInstance.destroy();
+            const ctx = document.getElementById('profitChart');
+            profitChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.months,
+                    datasets: [{
+                        label: '{{ t.profit }}',
+                        data: data.profit,
+                        backgroundColor: '#f093fb'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        })
+        .catch(err => console.error('Profit chart error:', err));
+}
+
+function exportToExcel() {
+    window.location.href = '/api/accounting/export/excel';
+}
+</script>
+
+{% endblock %}

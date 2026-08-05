@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>{{ t.stock_control }}</h1>
+<button>{{ t.add }}</button>
+
+{% for s in stock %}
+<form method="post">
+    <input type="hidden" name="id" value="{{ s.id }}">
+    {{ s.product }}
+    <input name="quantity" value="{{ s.quantity }}">
+    <button>{{ t.update }}</button>
+</form>
+{% endfor %}
+
+{% endblock %}

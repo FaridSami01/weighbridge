@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ t.login }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="login-body">
+
+<div class="login-overlay">
+    <form method="POST" class="login-box">
+
+        <h2>{{ t.login }}</h2>
+
+        {% if error %}
+        <div class="login-error">{{ error }}</div>
+        {% endif %}
+
+        <label>{{ t.username }}</label>
+        <input name="username" required>
+
+        <label>{{ t.password }}</label>
+        <input type="password" name="password" required>
+
+        <button type="submit">{{ t.login }}</button>
+    </form>
+</div>
+
+</body>
+</html>

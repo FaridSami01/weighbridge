@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.weighbridge-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.welcome-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.welcome-title {
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.welcome-subtitle {
+    font-size: 18px;
+    opacity: 0.9;
+}
+
+.live-weight-card {
+    background: white;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.weight-label {
+    font-size: 16px;
+    color: #64748b;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.weight-value {
+    font-size: 72px;
+    font-weight: bold;
+    color: #0f172a;
+    margin-bottom: 10px;
+}
+
+.weight-status {
+    font-size: 14px;
+    color: #10b981;
+    font-weight: 600;
+}
+
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.action-card {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s;
+    border-left: 5px solid #3b82f6;
+}
+
+.action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.action-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.action-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.action-desc {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #0f172a;
+}
+
+.stat-unit {
+    font-size: 14px;
+    color: #64748b;
+    margin-left: 8px;
+}
+</style>
+
+<div class="weighbridge-dashboard">
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+        <div class="welcome-title">⚖️ Weighbridge Station</div>
+        <div class="welcome-subtitle">Welcome, {{ session.username }}!</div>
+    </div>
+
+    <!-- Live Weight Display -->
+    <div class="live-weight-card">
+        <div class="weight-label">🎯 LIVE WEIGHT</div>
+        <div class="weight-value" id="liveWeight">-- kg</div>
+        <div class="weight-status" id="weightStatus">Connecting...</div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <a href="/intake" class="action-card">
+            <div class="action-icon">📥</div>
+            <div class="action-title">{{ t.wheat_intake }}</div>
+            <div class="action-desc">Record new truck intake</div>
+        </a>
+
+        <a href="/weighing/second" class="action-card">
+            <div class="action-icon">⚖️</div>
+            <div class="action-title">Second Weighing</div>
+            <div class="action-desc">Complete truck weighing</div>
+        </a>
+
+        <a href="/intake/history" class="action-card">
+            <div class="action-icon">📋</div>
+            <div class="action-title">{{ t.intake_history }}</div>
+            <div class="action-desc">View intake records</div>
+        </a>
+
+        <a href="/print-weighbridge/{{ latest_id or 0 }}" class="action-card">
+            <div class="action-icon">🖨️</div>
+            <div class="action-title">Print Ticket</div>
+            <div class="action-desc">Print last weighbridge ticket</div>
+        </a>
+    </div>
+
+    <!-- Today's Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Today's Trucks</div>
+            <div class="stat-value" id="todayTrucks">0</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Today's Tonnage</div>
+            <div class="stat-value" id="todayTonnage">0</div>
+            <span class="stat-unit">tons</span>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Average Load</div>
+            <div class="stat-value" id="avgLoad">0</div>
+            <span class="stat-unit">tons</span>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Last Truck</div>
+            <div class="stat-value" id="lastTruck" style="font-size: 24px;">--</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Update live weight every second
+setInterval(updateWeighbridge, 1000);
+updateWeighbridge();
+
+function updateWeighbridge() {
+    // Update live weight
+    fetch('/api/weighbridge')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('liveWeight').textContent = data.weight + ' kg';
+            document.getElementById('weightStatus').textContent = data.online ? '● Online' : '○ Offline';
+            document.getElementById('weightStatus').style.color = data.online ? '#10b981' : '#94a3b8';
+        })
+        .catch(err => {
+            document.getElementById('liveWeight').textContent = '-- kg';
+            document.getElementById('weightStatus').textContent = '○ Offline';
+        });
+
+    // Update today's stats
+    fetch('/api/intake/today')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('todayTrucks').textContent = data.truck_count || 0;
+            const tonnage = (data.total_weight / 1000) || 0;
+            document.getElementById('todayTonnage').textContent = tonnage.toFixed(1);
+            
+            const avg = data.truck_count > 0 ? (tonnage / data.truck_count) : 0;
+            document.getElementById('avgLoad').textContent = avg.toFixed(1);
+        })
+        .catch(err => console.error('Stats error:', err));
+
+    // Get last truck
+    fetch('/api/intake/last')
+        .then(r => r.json())
+        .then(data => {
+            if (data.truck_number) {
+                document.getElementById('lastTruck').textContent = data.truck_number;
+            }
+        })
+        .catch(err => console.error('Last truck error:', err));
+}
+</script>
+
+{% endblock %}

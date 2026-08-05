@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t.reports }}</h1>
+<button>{{ t.add }}</button>
+<form method="POST">
+<label>{{ t.from_date }}</label><input type="date" name="date_from">
+<label>{{ t.to_date }}</label><input type="date" name="date_to">
+<button>{{ t.generate_report }}</button>
+</form>
+{% endblock %}

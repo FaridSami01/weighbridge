@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ t.login }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="login-body">
+
+<div class="login-overlay">
+
+    <div class="modern-login-box">
+
+        <div class="modern-login-header">
+            <h1 class="modern-login-title">{{ t.login }}</h1>
+            <p class="modern-login-subtitle">
+                {{ t.mill_name }}<br>
+                {{ t.mill_name_ar }}
+            </p>
+        </div>
+
+        {% if error %}
+        <div class="modern-login-error">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST">
+
+            <div class="modern-input-group">
+                <span class="modern-input-icon">👤</span>
+                <input
+                    type="text"
+                    name="username"
+                    class="modern-input"
+                    placeholder="{{ t.username }}"
+                    required
+                >
+            </div>
+
+            <div class="modern-input-group">
+                <span class="modern-input-icon">🔒</span>
+                <input
+                    type="password"
+                    name="password"
+                    class="modern-input"
+                    placeholder="{{ t.password }}"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="modern-login-btn">
+                {{ t.enter_system }}
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+</body>
+</html>

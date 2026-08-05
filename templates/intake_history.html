@@ -1,0 +1,744 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* Modern Intake History Styling */
+.history-container {
+    padding: 20px;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+.history-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.history-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 32px;
+}
+
+.history-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: rgba(255,255,255,0.2);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* Filters Section */
+.filters-section {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+/* Table Container */
+.table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.table-header {
+    padding: 20px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.table-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.table-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Modern Table */
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.modern-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.modern-table th {
+    padding: 15px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.modern-table tbody tr {
+    border-bottom: 1px solid #e0e0e0;
+    transition: all 0.2s;
+}
+
+.modern-table tbody tr:hover {
+    background: #f8f9fa;
+    transform: scale(1.01);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.modern-table td {
+    padding: 15px;
+    text-align: right;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Action Buttons in Table */
+.action-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 0 2px;
+}
+
+.action-btn-view {
+    background: #3b82f6;
+    color: white;
+}
+
+.action-btn-view:hover {
+    background: #2563eb;
+}
+
+.action-btn-edit {
+    background: #10b981;
+    color: white;
+}
+
+.action-btn-edit:hover {
+    background: #059669;
+}
+
+.action-btn-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.action-btn-delete:hover {
+    background: #dc2626;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-top: 2px solid #e0e0e0;
+}
+
+.pagination button {
+    padding: 8px 16px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination .page-info {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+}
+
+/* Loading Spinner */
+.loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .history-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .modern-table {
+        min-width: 800px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .filters-section,
+    .filter-actions,
+    .table-actions,
+    .action-btn {
+        display: none !important;
+    }
+    
+    .modern-table tbody tr:hover {
+        background: white !important;
+    }
+}
+</style>
+
+<div class="history-container">
+    <!-- Header with Stats -->
+    <div class="history-header">
+        <h1>📋 {{ t.intake_history }}</h1>
+        <p style="margin: 5px 0 0 0; opacity: 0.9;">سجل استلام القمح / Wheat Intake Records</p>
+        
+        <div class="history-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalRecords">{{ records|length }}</div>
+                <div class="stat-label">إجمالي السجلات / Total Records</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalWeight">-</div>
+                <div class="stat-label">إجمالي الوزن / Total Weight (kg)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingCount">-</div>
+                <div class="stat-label">معلقة / Pending</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="completedCount">-</div>
+                <div class="stat-label">مكتملة / Completed</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <h3 style="margin: 0 0 20px 0; color: #2c3e50;">🔍 البحث والفلترة / Search & Filters</h3>
+        
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label>من تاريخ / From Date</label>
+                <input type="date" id="filterDateFrom" onchange="applyFilters()">
+            </div>
+            
+            <div class="filter-group">
+                <label>إلى تاريخ / To Date</label>
+                <input type="date" id="filterDateTo" onchange="applyFilters()">
+            </div>
+            
+            <div class="filter-group">
+                <label>العميل / Vendor</label>
+                <select id="filterVendor" onchange="applyFilters()">
+                    <option value="">الكل / All</option>
+                    {% for vendor in vendors %}
+                    <option value="{{ vendor.name }}">{{ vendor.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>النوع / Type</label>
+                <select id="filterType" onchange="applyFilters()">
+                    <option value="">الكل / All</option>
+                    <option value="صادر">صادر</option>
+                    <option value="وارد">وارد</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>الحالة / Status</label>
+                <select id="filterStatus" onchange="applyFilters()">
+                    <option value="">الكل / All</option>
+                    <option value="pending">معلقة / Pending</option>
+                    <option value="completed">مكتملة / Completed</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>بحث / Search</label>
+                <input type="text" id="searchText" placeholder="رقم السيارة، السائق، المحافظة..." 
+                       oninput="applyFilters()">
+            </div>
+        </div>
+        
+        <div class="filter-actions">
+            <button class="btn btn-secondary" onclick="clearFilters()">
+                🔄 مسح الفلترة / Clear Filters
+            </button>
+            <button class="btn btn-warning" onclick="exportToExcel()">
+                📊 تصدير Excel / Export Excel
+            </button>
+            <button class="btn btn-success" onclick="window.print()">
+                🖨️ طباعة / Print
+            </button>
+            <button class="btn btn-primary" onclick="window.location.href='/intake'">
+                ➕ وزنة جديدة / New Intake
+            </button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+        <div class="table-header">
+            <div class="table-title">
+                📑 السجلات / Records (<span id="filteredCount">{{ records|length }}</span>)
+            </div>
+            <div class="table-actions">
+                <select id="rowsPerPage" onchange="changeRowsPerPage()">
+                    <option value="10">10 صفوف</option>
+                    <option value="25" selected>25 صفوف</option>
+                    <option value="50">50 صفوف</option>
+                    <option value="100">100 صفوف</option>
+                    <option value="all">الكل / All</option>
+                </select>
+            </div>
+        </div>
+        
+        <table class="modern-table" id="recordsTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>التاريخ / Date</th>
+                    <th>العميل / Vendor</th>
+                    <th>رقم السيارة / Truck</th>
+                    <th>المقطورة / Trailer</th>
+                    <th>النوع / Type</th>
+                    <th>الوزنة الأولى / 1st Weight</th>
+                    <th>الوزنة الثانية / 2nd Weight</th>
+                    <th>الصافي / Net</th>
+                    <th>الحالة / Status</th>
+                    <th>الإجراءات / Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                {% if records %}
+                    {% for r in records %}
+                    <tr data-id="{{ r.id }}" 
+                        data-vendor="{{ r.vendor_name or '' }}"
+                        data-type="{{ r.wheat_type or '' }}"
+                        data-status="{{ 'completed' if r.second_weight and r.second_weight > 0 else 'pending' }}"
+                        data-date="{{ r.captured_at.strftime('%Y-%m-%d') if r.captured_at else '' }}"
+                        data-search="{{ r.truck_number or '' }} {{ r.driver_name or '' }} {{ r.governorate or '' }}">
+                        <td>{{ r.id }}</td>
+                        <td>{{ r.captured_at.strftime('%Y-%m-%d %H:%M') if r.captured_at else '-' }}</td>
+                        <td>{{ r.vendor_name or '-' }}</td>
+                        <td>{{ r.truck_number or '-' }}</td>
+                        <td>{{ r.trailer_number or '-' }}</td>
+                        <td>{{ r.wheat_type or '-' }}</td>
+                        <td>{{ (r.fine_bran_given or 0)|float|round(2) }} kg</td>
+                        <td>{{ (r.second_weight or 0)|float|round(2) }} kg</td>
+                        <td>{{ (r.net_weight or 0)|float|round(2) }} kg</td>
+                        <td>
+                            {% if r.second_weight and r.second_weight > 0 %}
+                                <span class="status-badge status-completed">✅ مكتمل</span>
+                            {% else %}
+                                <span class="status-badge status-pending">⏳ معلق</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="action-btn action-btn-view" onclick="viewRecord({{ r.id }})">
+                                👁️ عرض
+                            </button>
+                            {% if not r.second_weight or r.second_weight == 0 %}
+                            <button class="action-btn action-btn-edit" onclick="completeWeighing({{ r.id }})">
+                                ⚖️ إكمال
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="11" class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <h3>لا توجد سجلات</h3>
+                            <p>ابدأ بإضافة أول وزنة</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        
+        <!-- Pagination -->
+        <div class="pagination" id="pagination">
+            <button onclick="previousPage()" id="prevBtn">⏮️ السابق</button>
+            <span class="page-info">
+                صفحة <span id="currentPage">1</span> من <span id="totalPages">1</span>
+            </span>
+            <button onclick="nextPage()" id="nextBtn">التالي ⏭️</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let allRows = [];
+let filteredRows = [];
+let currentPage = 1;
+let rowsPerPage = 25;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    allRows = Array.from(document.querySelectorAll('#tableBody tr'));
+    calculateStats();
+    applyFilters();
+});
+
+// Calculate Statistics
+function calculateStats() {
+    const rows = document.querySelectorAll('#tableBody tr[data-id]');
+    let totalWeight = 0;
+    let pending = 0;
+    let completed = 0;
+    
+    rows.forEach(row => {
+        const netWeight = parseFloat(row.cells[8].textContent) || 0;
+        totalWeight += netWeight;
+        
+        if (row.dataset.status === 'pending') {
+            pending++;
+        } else {
+            completed++;
+        }
+    });
+    
+    document.getElementById('totalRecords').textContent = rows.length;
+    document.getElementById('totalWeight').textContent = totalWeight.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' kg';
+    document.getElementById('pendingCount').textContent = pending;
+    document.getElementById('completedCount').textContent = completed;
+}
+
+// Apply Filters
+function applyFilters() {
+    const dateFrom = document.getElementById('filterDateFrom').value;
+    const dateTo = document.getElementById('filterDateTo').value;
+    const vendor = document.getElementById('filterVendor').value.toLowerCase();
+    const type = document.getElementById('filterType').value.toLowerCase();
+    const status = document.getElementById('filterStatus').value;
+    const searchText = document.getElementById('searchText').value.toLowerCase();
+    
+    filteredRows = allRows.filter(row => {
+        if (!row.dataset.id) return false;
+        
+        // Date filter
+        if (dateFrom && row.dataset.date < dateFrom) return false;
+        if (dateTo && row.dataset.date > dateTo) return false;
+        
+        // Vendor filter
+        if (vendor && !row.dataset.vendor.toLowerCase().includes(vendor)) return false;
+        
+        // Type filter
+        if (type && !row.dataset.type.toLowerCase().includes(type)) return false;
+        
+        // Status filter
+        if (status && row.dataset.status !== status) return false;
+        
+        // Search text
+        if (searchText && !row.dataset.search.toLowerCase().includes(searchText)) return false;
+        
+        return true;
+    });
+    
+    document.getElementById('filteredCount').textContent = filteredRows.length;
+    currentPage = 1;
+    displayPage();
+}
+
+// Clear Filters
+function clearFilters() {
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterVendor').value = '';
+    document.getElementById('filterType').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('searchText').value = '';
+    applyFilters();
+}
+
+// Display Current Page
+function displayPage() {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = rowsPerPage === 'all' ? filteredRows.length : start + parseInt(rowsPerPage);
+    
+    // Hide all rows
+    allRows.forEach(row => row.style.display = 'none');
+    
+    // Show filtered rows for current page
+    filteredRows.slice(start, end).forEach(row => row.style.display = '');
+    
+    // Update pagination
+    const totalPages = rowsPerPage === 'all' ? 1 : Math.ceil(filteredRows.length / rowsPerPage);
+    document.getElementById('currentPage').textContent = currentPage;
+    document.getElementById('totalPages').textContent = totalPages;
+    document.getElementById('prevBtn').disabled = currentPage === 1;
+    document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+}
+
+// Change Rows Per Page
+function changeRowsPerPage() {
+    const value = document.getElementById('rowsPerPage').value;
+    rowsPerPage = value === 'all' ? 'all' : parseInt(value);
+    currentPage = 1;
+    displayPage();
+}
+
+// Pagination
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        displayPage();
+    }
+}
+
+function nextPage() {
+    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        displayPage();
+    }
+}
+
+// View Record
+function viewRecord(id) {
+    window.location.href = `/intake/view/${id}`;
+}
+
+// Complete Weighing
+function completeWeighing(id) {
+    // Load entry in second weighing page
+    window.location.href = `/second_weighing?load=${id}`;
+}
+
+// Export to Excel
+function exportToExcel() {
+    const rows = filteredRows.map(row => {
+        const cells = row.cells;
+        return {
+            'ID': cells[0].textContent,
+            'Date': cells[1].textContent,
+            'Vendor': cells[2].textContent,
+            'Truck': cells[3].textContent,
+            'Trailer': cells[4].textContent,
+            'Type': cells[5].textContent,
+            'First Weight': cells[6].textContent,
+            'Second Weight': cells[7].textContent,
+            'Net Weight': cells[8].textContent,
+            'Status': cells[9].textContent
+        };
+    });
+    
+    // Create CSV
+    const headers = Object.keys(rows[0] || {});
+    const csv = [
+        headers.join(','),
+        ...rows.map(row => headers.map(h => `"${row[h]}"`).join(','))
+    ].join('\n');
+    
+    // Download
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `intake_history_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
+</script>
+
+{% endblock %}

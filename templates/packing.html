@@ -1,0 +1,820 @@
+﻿{% extends "base.html" %}
+{% block content %}
+
+<style>
+.packing-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.machines-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.machine-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 25px;
+    border-left: 6px solid #3b82f6;
+}
+
+.machine-card.online {
+    border-left-color: #10b981;
+}
+
+.machine-card.offline {
+    border-left-color: #ef4444;
+    opacity: 0.6;
+}
+
+.machine-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.machine-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #0f172a;
+}
+
+.machine-subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 5px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-online {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-offline {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #0f172a;
+}
+
+.stat-unit {
+    font-size: 14px;
+    color: #64748b;
+    margin-left: 5px;
+}
+
+.state-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.state-empty {
+    background: #3b82f6;
+}
+
+.state-full {
+    background: #10b981;
+}
+
+.state-offline {
+    background: #94a3b8;
+}
+
+.recent-bags-section {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-top: 25px;
+}
+
+.bags-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.bags-table th {
+    background: #f8fafc;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #e2e8f0;
+    font-size: 13px;
+}
+
+.bags-table td {
+    padding: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.machine-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.tag-bran {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.tag-flour {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+}
+</style>
+
+<div class="packing-container">
+    <h1 style="margin-bottom: 30px;">📦 {{ t.packing }} - 3 Production Lines</h1>
+
+    <!-- Date Range Filter Section -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+        <div style="display: flex; gap: 15px; align-items: end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; color: white; font-weight: 600; margin-bottom: 8px; font-size: 14px;">
+                    📅 Start Date | تاريخ البداية
+                </label>
+                <input type="date" id="startDate" 
+                    style="width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            </div>
+            
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; color: white; font-weight: 600; margin-bottom: 8px; font-size: 14px;">
+                    📅 End Date | تاريخ النهاية
+                </label>
+                <input type="date" id="endDate" 
+                    style="width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            </div>
+            
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; color: white; font-weight: 600; margin-bottom: 8px; font-size: 14px;">
+                    🏭 Machine | الماكينة
+                </label>
+                <select id="filterMachine" 
+                    style="width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <option value="">All Machines | جميع الماكينات</option>
+                    <option value="bran_40kg">BX3 - Bran 40kg</option>
+                    <option value="flour_50kg_bxf3">BXf3 - Flour 50kg</option>
+                    <option value="flour_50kg_bx30">BX30 - Flour 50kg</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button onclick="openPackingPDF()" 
+                    style="padding: 12px 24px; background: white; color: #667eea; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    📄 Generate PDF | إنشاء PDF
+                </button>
+                <button onclick="setThisWeek()" 
+                    style="padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    📆 This Week | هذا الأسبوع
+                </button>
+                <button onclick="resetToToday()" 
+                    style="padding: 12px 20px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    🔄 Today | اليوم
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filter Info Display -->
+        <div id="filterInfo" style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.2); border-radius: 8px; color: white; font-size: 14px; display: none;">
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button class="btn btn-success" onclick="recordAllProduction()">
+            💾 Record All Production
+        </button>
+        <button class="btn btn-danger" onclick="resetAll()">
+            🔄 Reset All Machines
+        </button>
+    </div>
+
+    <!-- Machine Cards -->
+    <div class="machines-grid">
+        <!-- Machine 1: Bran 40kg -->
+        <div class="machine-card" id="card-bran_40kg">
+            <div class="machine-header">
+                <div>
+                    <div class="machine-title" id="name-bran_40kg">BX3 - Bran 40kg</div>
+                    <div class="machine-subtitle">COM4 • Coarse Bran</div>
+                </div>
+                <span class="status-badge status-offline" id="status-bran_40kg">Offline</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Current Weight</div>
+                    <div class="stat-value" id="weight-bran_40kg">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Bags Today</div>
+                    <div class="stat-value" id="bags-bran_40kg">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Weight</div>
+                    <div class="stat-value" id="total-bran_40kg">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Average</div>
+                    <div class="stat-value" id="avg-bran_40kg">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <span class="state-indicator state-empty" id="indicator-bran_40kg"></span>
+                <span style="font-size: 13px; color: #64748b;" id="state-bran_40kg">EMPTY</span>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;" onclick="resetMachine('bran_40kg')">
+                Reset This Line
+            </button>
+        </div>
+
+        <!-- Machine 2: Flour 50kg BXf3 -->
+        <div class="machine-card" id="card-flour_50kg_bxf3">
+            <div class="machine-header">
+                <div>
+                    <div class="machine-title" id="name-flour_50kg_bxf3">BXf3 - Flour 50kg</div>
+                    <div class="machine-subtitle">COM9 • Flour</div>
+                </div>
+                <span class="status-badge status-offline" id="status-flour_50kg_bxf3">Offline</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Current Weight</div>
+                    <div class="stat-value" id="weight-flour_50kg_bxf3">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Bags Today</div>
+                    <div class="stat-value" id="bags-flour_50kg_bxf3">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Weight</div>
+                    <div class="stat-value" id="total-flour_50kg_bxf3">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Average</div>
+                    <div class="stat-value" id="avg-flour_50kg_bxf3">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <span class="state-indicator state-empty" id="indicator-flour_50kg_bxf3"></span>
+                <span style="font-size: 13px; color: #64748b;" id="state-flour_50kg_bxf3">EMPTY</span>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;" onclick="resetMachine('flour_50kg_bxf3')">
+                Reset This Line
+            </button>
+        </div>
+
+        <!-- Machine 3: Flour 50kg BX30 -->
+        <div class="machine-card" id="card-flour_50kg_bx30">
+            <div class="machine-header">
+                <div>
+                    <div class="machine-title" id="name-flour_50kg_bx30">BX30 - Flour 50kg</div>
+                    <div class="machine-subtitle">COM5 • Flour</div>
+                </div>
+                <span class="status-badge status-offline" id="status-flour_50kg_bx30">Offline</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Current Weight</div>
+                    <div class="stat-value" id="weight-flour_50kg_bx30">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Bags Today</div>
+                    <div class="stat-value" id="bags-flour_50kg_bx30">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Weight</div>
+                    <div class="stat-value" id="total-flour_50kg_bx30">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Average</div>
+                    <div class="stat-value" id="avg-flour_50kg_bx30">0.0</div>
+                    <span class="stat-unit">kg</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <span class="state-indicator state-empty" id="indicator-flour_50kg_bx30"></span>
+                <span style="font-size: 13px; color: #64748b;" id="state-flour_50kg_bx30">EMPTY</span>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;" onclick="resetMachine('flour_50kg_bx30')">
+                Reset This Line
+            </button>
+        </div>
+    </div>
+
+    <!-- Recent Bags (All Machines) -->
+    <div class="recent-bags-section">
+        <h2 style="margin-bottom: 15px;">Recent Bags (All Lines)</h2>
+        <table class="bags-table">
+            <thead>
+                <tr>
+                    <th>Machine</th>
+                    <th>#</th>
+                    <th>Weight</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="recentBagsTable">
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">
+                        No bags completed yet
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let updateInterval;
+
+window.addEventListener('DOMContentLoaded', function() {
+    updateAllStatus();
+    updateInterval = setInterval(updateAllStatus, 1000);
+});
+
+window.addEventListener('beforeunload', function() {
+    if (updateInterval) clearInterval(updateInterval);
+});
+
+function updateAllStatus() {
+    fetch('/api/packing/status')
+        .then(r => r.json())
+        .then(data => {
+            // Update each machine
+            ['bran_40kg', 'flour_50kg_bxf3', 'flour_50kg_bx30'].forEach(machineId => {
+                updateMachine(machineId, data[machineId] || {});
+            });
+        })
+        .catch(err => console.error('Status error:', err));
+    
+    updateRecentBags();
+}
+
+function updateMachine(machineId, data) {
+    const isOnline = data.online || false;
+    
+    // Update card style
+    const card = document.getElementById(`card-${machineId}`);
+    card.className = `machine-card ${isOnline ? 'online' : 'offline'}`;
+    
+    // Update status badge
+    const statusBadge = document.getElementById(`status-${machineId}`);
+    statusBadge.className = `status-badge ${isOnline ? 'status-online' : 'status-offline'}`;
+    statusBadge.textContent = isOnline ? 'Online' : 'Offline';
+    
+    // Update stats
+    document.getElementById(`weight-${machineId}`).textContent = (data.current_weight || 0).toFixed(1);
+    document.getElementById(`bags-${machineId}`).textContent = data.bag_count || 0;
+    document.getElementById(`total-${machineId}`).textContent = (data.total_weight || 0).toFixed(1);
+    document.getElementById(`avg-${machineId}`).textContent = (data.average_weight || 0).toFixed(1);
+    
+    // Update state indicator
+    const state = data.state || 'OFFLINE';
+    const indicator = document.getElementById(`indicator-${machineId}`);
+    indicator.className = `state-indicator state-${state.toLowerCase()}`;
+    document.getElementById(`state-${machineId}`).textContent = state;
+}
+
+function updateRecentBags() {
+    fetch('/api/packing/recent?count=20')
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('recentBagsTable');
+            
+            if (data.bags && data.bags.length > 0) {
+                tbody.innerHTML = '';
+                
+                data.bags.forEach(bag => {
+                    const row = document.createElement('tr');
+                    
+                    // Machine tag
+                    let machineName = '';
+                    let tagClass = '';
+                    if (bag.machine === 'bran_40kg') {
+                        machineName = 'Bran 40kg';
+                        tagClass = 'tag-bran';
+                    } else if (bag.machine === 'flour_50kg_bxf3') {
+                        machineName = 'Flour BXf3';
+                        tagClass = 'tag-flour';
+                    } else {
+                        machineName = 'Flour BX30';
+                        tagClass = 'tag-flour';
+                    }
+                    
+                    // Status
+                    let status = '✅ OK';
+                    if (bag.weight < 38 && bag.machine === 'bran_40kg') status = '⚠️ Under';
+                    if (bag.weight > 42 && bag.machine === 'bran_40kg') status = '⚠️ Over';
+                    if (bag.weight < 48 && bag.machine !== 'bran_40kg') status = '⚠️ Under';
+                    if (bag.weight > 52 && bag.machine !== 'bran_40kg') status = '⚠️ Over';
+                    
+                    row.innerHTML = `
+                        <td><span class="machine-tag ${tagClass}">${machineName}</span></td>
+                        <td><strong>#${bag.bag_number}</strong></td>
+                        <td><strong>${bag.weight.toFixed(2)} kg</strong></td>
+                        <td>${bag.timestamp}</td>
+                        <td>${status}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">
+                            No bags completed yet
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(err => console.error('Recent bags error:', err));
+}
+
+function resetMachine(machineId) {
+    if (!confirm(`Reset ${machineId} counter?`)) return;
+    
+    fetch('/api/packing/reset', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({machine: machineId})
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            alert(`✅ ${machineId} reset!`);
+            updateAllStatus();
+        } else {
+            alert('❌ Error: ' + (result.error || 'Unknown'));
+        }
+    })
+    .catch(err => alert('❌ Error'));
+}
+
+function resetAll() {
+    if (!confirm('Reset ALL machines?')) return;
+    
+    fetch('/api/packing/reset', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ All machines reset!');
+            updateAllStatus();
+        }
+    })
+    .catch(err => alert('❌ Error'));
+}
+
+function recordAllProduction() {
+    if (!confirm('Record production from all machines?')) return;
+    
+    alert('⚠️ Production recording for multiple machines not yet implemented.\nRecord each machine separately from their individual pages.');
+}
+
+// ============================================================================
+// PDF GENERATION FUNCTION
+// ============================================================================
+
+function openPackingPDF() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const filterMachine = document.getElementById('filterMachine').value;
+    
+    if (!startDate || !endDate) {
+        alert('Please select both start and end dates | الرجاء اختيار تاريخ البداية والنهاية');
+        return;
+    }
+    
+    // Validate that end date is not before start date
+    if (new Date(endDate) < new Date(startDate)) {
+        alert('End date must be after start date | تاريخ النهاية يجب أن يكون بعد تاريخ البداية');
+        return;
+    }
+    
+    // Build PDF URL with date range
+    let url = `/api/packing/pdf-range?start_date=${startDate}&end_date=${endDate}`;
+    if (filterMachine) {
+        url += `&machine_id=${filterMachine}`;
+    }
+    
+    // Open PDF in new tab
+    window.open(url, '_blank');
+}
+
+// ============================================================================
+// HISTORICAL DATA FUNCTIONS (KEPT FOR REFERENCE)
+// ============================================================================
+
+// Set today's date on page load for both start and end dates
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('startDate').value = today;
+    document.getElementById('endDate').value = today;
+});
+
+async function loadHistoricalData() {
+    const filterDate = document.getElementById('filterDate').value;
+    const filterMachine = document.getElementById('filterMachine').value;
+    
+    if (!filterDate) {
+        alert('Please select a date | الرجاء اختيار تاريخ');
+        return;
+    }
+    
+    // Show filter info
+    const filterInfo = document.getElementById('filterInfo');
+    const dateObj = new Date(filterDate);
+    let infoText = `📅 Viewing: ${dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+    if (filterMachine) {
+        const machineNames = {
+            'bran_40kg': 'BX3 - Bran 40kg',
+            'flour_50kg_bxf3': 'BXf3 - Flour 50kg',
+            'flour_50kg_bx30': 'BX30 - Flour 50kg'
+        };
+        infoText += ` | 🏭 ${machineNames[filterMachine]}`;
+    }
+    filterInfo.textContent = infoText;
+    filterInfo.style.display = 'block';
+    
+    try {
+        // Build URL
+        let url = `/api/packing/details/${filterDate}`;
+        if (filterMachine) {
+            url += `?machine_id=${filterMachine}`;
+        }
+        
+        console.log('Fetching:', url);  // Debug log
+        const response = await fetch(url);
+        console.log('Response status:', response.status);  // Debug log
+        
+        const data = await response.json();
+        console.log('Data received:', data);  // Debug log
+        
+        if (data.error) {
+            alert('❌ Error loading data: ' + data.error);
+            console.error('API Error:', data.error);
+            return;
+        }
+        
+        // Update the combined bags list
+        updateHistoricalBagsList(data.bags);
+        
+        // Update machine stats from historical data
+        updateMachineStatsFromHistory(data.bags);
+        
+    } catch (error) {
+        console.error('Fetch error:', error);
+        alert('❌ Failed to load historical data. Check console for details.\nError: ' + error.message);
+    }
+}
+
+function updateHistoricalBagsList(bags) {
+    const tbody = document.getElementById('recentBagsTable');
+    
+    if (!tbody) {
+        console.error('Table element not found: recentBagsTable');
+        return;
+    }
+    
+    if (!bags || bags.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">
+                    📭 No bags found for this date
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    bags.forEach(bag => {
+        const row = document.createElement('tr');
+        
+        // Machine name and tag
+        let machineName, tagClass;
+        if (bag.machine.includes('Bran')) {
+            machineName = 'Bran BX3';
+            tagClass = 'tag-bran';
+        } else if (bag.machine.includes('BXf3')) {
+            machineName = 'Flour BXf3';
+            tagClass = 'tag-flour';
+        } else {
+            machineName = 'Flour BX30';
+            tagClass = 'tag-flour';
+        }
+        
+        // Status
+        let status = '✅ OK';
+        const weight = bag.weight;
+        if (bag.machine.includes('Bran')) {
+            if (weight < 38) status = '⚠️ Under';
+            if (weight > 42) status = '⚠️ Over';
+        } else {
+            if (weight < 48) status = '⚠️ Under';
+            if (weight > 52) status = '⚠️ Over';
+        }
+        
+        row.innerHTML = `
+            <td><span class="machine-tag ${tagClass}">${machineName}</span></td>
+            <td><strong>#${bag.bag_number}</strong></td>
+            <td><strong>${bag.weight.toFixed(2)} kg</strong></td>
+            <td>${bag.time || '--:--'}</td>
+            <td>${status}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function updateMachineStatsFromHistory(bags) {
+    // Group bags by machine
+    const machineData = {
+        'bran_40kg': { bags: [], total: 0 },
+        'flour_50kg_bxf3': { bags: [], total: 0 },
+        'flour_50kg_bx30': { bags: [], total: 0 }
+    };
+    
+    bags.forEach(bag => {
+        // Identify machine from name
+        let machineId;
+        if (bag.machine.includes('BX3') || bag.machine.includes('Bran')) {
+            machineId = 'bran_40kg';
+        } else if (bag.machine.includes('BXf3')) {
+            machineId = 'flour_50kg_bxf3';
+        } else if (bag.machine.includes('BX30')) {
+            machineId = 'flour_50kg_bx30';
+        }
+        
+        if (machineId && machineData[machineId]) {
+            machineData[machineId].bags.push(bag);
+            machineData[machineId].total += bag.weight;
+        }
+    });
+    
+    // Update each machine's display using correct IDs
+    Object.keys(machineData).forEach(machineId => {
+        const data = machineData[machineId];
+        const count = data.bags.length;
+        const total = data.total;
+        
+        // Update bag count (ID format: bags-{machine_id})
+        const countEl = document.getElementById(`bags-${machineId}`);
+        if (countEl) {
+            countEl.textContent = count;
+        } else {
+            console.warn(`Element not found: bags-${machineId}`);
+        }
+        
+        // Update total weight (ID format: weight-{machine_id})
+        const weightEl = document.getElementById(`weight-${machineId}`);
+        if (weightEl) {
+            weightEl.textContent = total.toFixed(1);
+        } else {
+            console.warn(`Element not found: weight-${machineId}`);
+        }
+    });
+}
+
+function resetToToday() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('startDate').value = today;
+    document.getElementById('endDate').value = today;
+    document.getElementById('filterMachine').value = '';
+    document.getElementById('filterInfo').style.display = 'none';
+    
+    // Reload current/live data
+    updateAllStatus();
+}
+
+function setThisWeek() {
+    const today = new Date();
+    const firstDay = new Date(today);
+    firstDay.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+    
+    const lastDay = new Date(today);
+    lastDay.setDate(firstDay.getDate() + 6); // End of week (Saturday)
+    
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+    document.getElementById('filterMachine').value = '';
+    
+    // Show info
+    const filterInfo = document.getElementById('filterInfo');
+    filterInfo.innerHTML = `📆 Showing this week: ${firstDay.toLocaleDateString('en-US')} to ${lastDay.toLocaleDateString('en-US')}`;
+    filterInfo.style.display = 'block';
+}
+</script>
+
+{% endblock %}
