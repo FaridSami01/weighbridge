@@ -343,7 +343,7 @@
     <div class="page-header">
         <h1>📊 {{ t.accounting }}</h1>
         <div style="display: flex; gap: 10px;">
-            <button class="btn btn-primary" onclick="window.print()">
+            <button class="btn btn-primary" onclick="printReport()">
                 🖨️ {{ t.print }}
             </button>
             <button class="btn btn-success" onclick="exportToExcel()">
@@ -363,19 +363,19 @@
         <div class="summary-card revenue">
             <div class="card-label">{{ t.total_revenue }}</div>
             <div class="card-value" id="totalRevenue">LE 0</div>
-            <div class="card-subtext">{{ t.this_month }}</div>
+            <div class="card-subtext" id="revenueDateRange">{{ t.this_month }}</div>
         </div>
         
         <div class="summary-card expenses">
             <div class="card-label">{{ t.total_expenses }}</div>
             <div class="card-value" id="totalExpenses">LE 0</div>
-            <div class="card-subtext">{{ t.this_month }}</div>
+            <div class="card-subtext" id="expenseDateRange">{{ t.this_month }}</div>
         </div>
         
         <div class="summary-card profit">
             <div class="card-label">{{ t.net_profit }}</div>
             <div class="card-value" id="netProfit">LE 0</div>
-            <div class="card-subtext">{{ t.this_month }}</div>
+            <div class="card-subtext" id="profitDateRange">{{ t.this_month }}</div>
         </div>
     </div>
     
@@ -472,11 +472,11 @@
         <div class="filters-bar">
             <div class="filter-item">
                 <label>{{ t.from_date }}</label>
-                <input type="date" id="revenueStartDate" onchange="loadRevenue()">
+                <input type="date" id="revenueStartDate" onchange="loadRevenue(); loadSummary(); loadCharts();">
             </div>
             <div class="filter-item">
                 <label>{{ t.to_date }}</label>
-                <input type="date" id="revenueEndDate" onchange="loadRevenue()">
+                <input type="date" id="revenueEndDate" onchange="loadRevenue(); loadSummary(); loadCharts();">
             </div>
             <button class="btn btn-primary btn-sm" onclick="loadRevenue()">
                 {{ t.apply }}
@@ -488,6 +488,7 @@
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th>{{ t.date if t else 'Date' }} / التاريخ</th>
                         <th>{{ t.revenue_source }}</th>
                         <th>{{ t.quantity }}</th>
                         <th>{{ t.rate }}</th>
@@ -501,7 +502,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="3">{{ t.total }}</td>
+                        <td colspan="4">{{ t.total }}</td>
                         <td id="revenueTotal">LE 0</td>
                         <td>100%</td>
                         <td></td>
@@ -626,15 +627,10 @@
             </div>
             <div class="form-group">
                 <label>{{ t.category }}</label>
-                <select name="category" required>
-                    <option value="">{{ t.select_category }}</option>
-                    <option value="labor">{{ t.labor }}</option>
-                    <option value="transport">{{ t.wheat_transport }}</option>
-                    <option value="bags">{{ t.bags }}</option>
-                    <option value="electricity">{{ t.electricity }}</option>
-                    <option value="water">{{ t.water }}</option>
-                    <option value="maintenance">{{ t.maintenance }}</option>
-                </select>
+                <input type="text"
+                    name="category"
+                    placeholder="Enter category (e.g., Salaries, Utilities, Maintenance...)"
+		    required>
             </div>
             <div class="form-group">
                 <label>{{ t.description }}</label>
@@ -665,11 +661,13 @@
 // Initialize
 window.addEventListener('DOMContentLoaded', function() {
     setDefaultDates();
-    loadSummary();
-    loadRevenue();
-    loadExpenses();
-    // FIX #3: Load charts after a short delay to ensure containers are ready
-    setTimeout(loadCharts, 100);
+    // Small delay to ensure dates are set before loading data
+    setTimeout(function() {
+        loadSummary();
+        loadRevenue();
+        loadExpenses();
+        setTimeout(loadCharts, 300);
+    }, 50);
 });
 
 function setDefaultDates() {
@@ -682,16 +680,235 @@ function setDefaultDates() {
     document.getElementById('expenseEndDate').value = today;
 }
 
+function printReport() {
+    const start = document.getElementById('revenueStartDate').value;
+    const end = document.getElementById('revenueEndDate').value;
+    const expStart = document.getElementById('expenseStartDate').value;
+    const expEnd = document.getElementById('expenseEndDate').value;
+
+    // Fetch both revenue and expenses for selected period
+    Promise.all([
+        fetch(`/api/accounting/revenue?start=${start}&end=${end}`).then(r => r.json()),
+        fetch(`/api/accounting/expenses?start=${expStart}&end=${expEnd}`).then(r => r.json())
+    ])
+    .then(([revenueData, expensesData]) => {
+        const sources = revenueData.sources || [];
+        const expenses = expensesData.expenses || [];
+
+        const totalRevenue = sources.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);
+        const totalExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const netProfit = totalRevenue - totalExpenses;
+        const profitColor = netProfit >= 0 ? '#065f46' : '#991b1b';
+        const profitBg = netProfit >= 0 ? '#d1fae5' : '#fee2e2';
+
+        // Build revenue rows
+        const revenueRows = sources.length > 0
+            ? sources.map(s => `
+                <tr>
+                    <td>${s.date || '-'}</td>
+                    <td>${s.name || '-'}</td>
+                    <td>${s.quantity || '-'}</td>
+                    <td>${s.rate || '-'}</td>
+                    <td style="text-align:left; font-weight:bold;">LE ${parseFloat(s.amount || 0).toLocaleString()}</td>
+                </tr>`).join('')
+            : '<tr><td colspan="5" style="text-align:center; color:#999;">لا توجد إيرادات في هذه الفترة</td></tr>';
+
+        // Build expense rows
+        const expenseRows = expenses.length > 0
+            ? expenses.map(e => `
+                <tr>
+                    <td>${e.date || '-'}</td>
+                    <td>${e.category || '-'}</td>
+                    <td>${e.description || '-'}</td>
+                    <td style="text-align:left; font-weight:bold;">LE ${parseFloat(e.amount || 0).toLocaleString()}</td>
+                </tr>`).join('')
+            : '<tr><td colspan="4" style="text-align:center; color:#999;">لا توجد مصروفات في هذه الفترة</td></tr>';
+
+        const now = new Date();
+        const printedAt = now.toLocaleDateString('ar-EG') + ' ' + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+
+        // Open print window
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        printWindow.document.write(`
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تقرير الحسابات</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; color: #1f2937; }
+        
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #1e3c72; padding-bottom: 15px; }
+        .header h1 { font-size: 26px; color: #1e3c72; margin-bottom: 5px; }
+        .header h2 { font-size: 18px; color: #555; margin-bottom: 10px; }
+        .header .period { font-size: 14px; color: #666; background: #f3f4f6; padding: 6px 15px; border-radius: 20px; display: inline-block; }
+        
+        .summary-grid { display: flex; gap: 15px; margin-bottom: 30px; }
+        .summary-box { flex: 1; padding: 15px; border-radius: 10px; text-align: center; }
+        .summary-box .label { font-size: 13px; margin-bottom: 8px; font-weight: bold; }
+        .summary-box .value { font-size: 22px; font-weight: bold; }
+        .box-revenue { background: #d1fae5; color: #065f46; }
+        .box-expenses { background: #fee2e2; color: #991b1b; }
+        .box-profit { background: ${profitBg}; color: ${profitColor}; border: 2px solid ${profitColor}; }
+        
+        .section { margin-bottom: 30px; }
+        .section-title { font-size: 16px; font-weight: bold; padding: 10px 15px; border-radius: 8px 8px 0 0; color: white; }
+        .revenue-title { background: #059669; }
+        .expense-title { background: #dc2626; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { padding: 10px 12px; text-align: right; font-size: 13px; background: #f8fafc; border-bottom: 2px solid #e5e7eb; }
+        td { padding: 9px 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+        tr:hover td { background: #f9fafb; }
+        
+        .total-row td { font-weight: bold; font-size: 14px; background: #f3f4f6; border-top: 2px solid #e5e7eb; }
+        
+        .profit-box { 
+            text-align: center; padding: 20px; border-radius: 10px; 
+            background: ${profitBg}; color: ${profitColor};
+            border: 2px solid ${profitColor}; margin-bottom: 20px;
+        }
+        .profit-box .label { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
+        .profit-box .value { font-size: 32px; font-weight: bold; }
+        
+        .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+        
+        @media print {
+            body { padding: 10mm; }
+            .summary-grid { break-inside: avoid; }
+            .section { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>🏭 مطاحن المهندس الحديثة</h1>
+        <h2>تقرير الإيرادات والمصروفات</h2>
+        <span class="period">📅 من ${start} إلى ${end}</span>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+        <div class="summary-box box-revenue">
+            <div class="label">💰 إجمالي الإيرادات</div>
+            <div class="value">LE ${totalRevenue.toLocaleString()}</div>
+        </div>
+        <div class="summary-box box-expenses">
+            <div class="label">💳 إجمالي المصروفات</div>
+            <div class="value">LE ${totalExpenses.toLocaleString()}</div>
+        </div>
+        <div class="summary-box box-profit">
+            <div class="label">${netProfit >= 0 ? '📈 صافي الربح' : '📉 صافي الخسارة'}</div>
+            <div class="value">LE ${Math.abs(netProfit).toLocaleString()}</div>
+        </div>
+    </div>
+
+    <!-- Revenue Section -->
+    <div class="section">
+        <div class="section-title revenue-title">💰 الإيرادات / Revenue</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>المصدر</th>
+                    <th>الكمية</th>
+                    <th>السعر</th>
+                    <th>المبلغ</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${revenueRows}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="4">إجمالي الإيرادات</td>
+                    <td>LE ${totalRevenue.toLocaleString()}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Expenses Section -->
+    <div class="section">
+        <div class="section-title expense-title">💳 المصروفات / Expenses</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>الفئة</th>
+                    <th>الوصف</th>
+                    <th>المبلغ</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${expenseRows}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="3">إجمالي المصروفات</td>
+                    <td>LE ${totalExpenses.toLocaleString()}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Net Profit Box -->
+    <div class="profit-box">
+        <div class="label">${netProfit >= 0 ? '📈 صافي الربح' : '📉 صافي الخسارة'}</div>
+        <div class="value">LE ${Math.abs(netProfit).toLocaleString()}</div>
+    </div>
+
+    <div class="footer">
+        طبع في: ${printedAt} &nbsp;|&nbsp; مطاحن المهندس الحديثة
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() { window.print(); window.close(); }, 300);
+        };
+    <\/script>
+</body>
+</html>`);
+        printWindow.document.close();
+    })
+    .catch(err => {
+        console.error('Print error:', err);
+        alert('خطأ في تحميل البيانات للطباعة');
+    });
+}
+
 function loadSummary() {
-    fetch('/api/accounting/summary')
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('milledToday').textContent = data.milled_today.toFixed(1) + ' {{ t.tons }}';
-            document.getElementById('totalRevenue').textContent = 'LE ' + data.revenue.toLocaleString();
-            document.getElementById('totalExpenses').textContent = 'LE ' + data.expenses.toLocaleString();
-            document.getElementById('netProfit').textContent = 'LE ' + data.profit.toLocaleString();
-        })
-        .catch(err => console.error('Summary error:', err));
+    const start = document.getElementById('revenueStartDate')?.value ||
+                  new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const end = document.getElementById('revenueEndDate')?.value ||
+                new Date().toISOString().split('T')[0];
+
+    // Update card subtexts to show selected date range
+    const dateLabel = start + ' → ' + end;
+    ['revenueDateRange', 'expenseDateRange', 'profitDateRange'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = dateLabel;
+    });
+
+    // Fetch revenue and expenses with the selected date range
+    Promise.all([
+        fetch(`/api/accounting/revenue?start=${start}&end=${end}`).then(r => r.json()),
+        fetch(`/api/accounting/expenses?start=${start}&end=${end}`).then(r => r.json()),
+        fetch('/api/accounting/summary').then(r => r.json())
+    ])
+    .then(([revenueData, expensesData, summaryData]) => {
+        const totalRevenue = (revenueData.sources || []).reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);
+        const totalExpenses = (expensesData.expenses || []).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const netProfit = totalRevenue - totalExpenses;
+
+        document.getElementById('milledToday').textContent = ((summaryData.milled_today || 0)).toFixed(1) + ' {{ t.tons }}';
+        document.getElementById('totalRevenue').textContent = 'LE ' + totalRevenue.toLocaleString();
+        document.getElementById('totalExpenses').textContent = 'LE ' + totalExpenses.toLocaleString();
+        document.getElementById('netProfit').textContent = 'LE ' + netProfit.toLocaleString();
+    })
+    .catch(err => console.error('Summary error:', err));
 }
 
 function saveRates() {
@@ -736,6 +953,7 @@ function loadRevenue() {
                 total += source.amount;
                 const row = `
                     <tr>
+                        <td>${source.date || '-'}</td>
                         <td>${source.name}</td>
                         <td>${source.quantity}</td>
                         <td>${source.rate}</td>
@@ -889,12 +1107,19 @@ let trendChartInstance = null;
 let profitChartInstance = null;
 
 function loadCharts() {
+    const start = document.getElementById('revenueStartDate').value;
+    const end = document.getElementById('revenueEndDate').value;
+
     // Revenue breakdown pie chart
-    fetch('/api/accounting/charts/revenue')
+    fetch(`/api/accounting/charts/revenue?start=${start}&end=${end}`)
         .then(r => r.json())
         .then(data => {
             if (revenueChartInstance) revenueChartInstance.destroy();
             const ctx = document.getElementById('revenueChart');
+            if (!data.labels || data.labels.length === 0) {
+                ctx.parentElement.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">لا توجد بيانات إيرادات</div>';
+                return;
+            }
             revenueChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -907,20 +1132,22 @@ function loadCharts() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {position: 'bottom'}
-                    }
+                    plugins: { legend: {position: 'bottom'} }
                 }
             });
         })
         .catch(err => console.error('Revenue chart error:', err));
     
     // Expense breakdown pie chart
-    fetch('/api/accounting/charts/expenses')
+    fetch(`/api/accounting/charts/expenses?start=${start}&end=${end}`)
         .then(r => r.json())
         .then(data => {
             if (expenseChartInstance) expenseChartInstance.destroy();
             const ctx = document.getElementById('expenseChart');
+            if (!data.labels || data.labels.length === 0) {
+                ctx.parentElement.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">لا توجد بيانات مصروفات</div>';
+                return;
+            }
             expenseChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -933,9 +1160,7 @@ function loadCharts() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {position: 'bottom'}
-                    }
+                    plugins: { legend: {position: 'bottom'} }
                 }
             });
         })
@@ -965,10 +1190,7 @@ function loadCharts() {
                         tension: 0.4
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
         })
         .catch(err => console.error('Trend chart error:', err));
@@ -989,10 +1211,7 @@ function loadCharts() {
                         backgroundColor: '#f093fb'
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
         })
         .catch(err => console.error('Profit chart error:', err));

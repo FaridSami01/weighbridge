@@ -24,8 +24,8 @@ app.secret_key = os.environ.get("SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION_" + os.
 # DATABASE CONFIG - Matches YOUR schema
 DB_CONFIG = {
     "host": os.environ.get("DB_HOST", "localhost"),
-    "user": os.environ.get("DB_USER", "milluser"),
-    "password": os.environ.get("DB_PASSWORD", "millpass"),
+    "user": os.environ.get("DB_USER", "root"),
+    "password": os.environ.get("DB_PASSWORD", "root"),
     "database": os.environ.get("DB_NAME", "mill"),
     "charset": "utf8mb4",
     "use_unicode": True
@@ -53,7 +53,7 @@ try:
     import time
     
     port = os.environ.get("WEIGHBRIDGE_PORT", "COM4" if os.name == 'nt' else "/dev/ttyUSB0")
-    baudrate = int(os.environ.get("WEIGHBRIDGE_BAUD", "9600"))
+    baudrate = int(os.environ.get("WEIGHBRIDGE_BAUD", "2400"))
     
     weighbridge = WeighbridgeReader(port=port, baudrate=baudrate)
     
@@ -808,8 +808,10 @@ def second_weighing():
             num_bags = request.form.get('num_bags', 0)
             bag_weight = request.form.get('bag_weight', 0)
             receiver_name = request.form.get('receiver_name', '')
+            marine = request.form.get('marine', '')
+            load_type = request.form.get('load_type', '')
             
-            # Calculate values
+            # Convert to numbers
             second_weight = float(second_weight) if second_weight else 0
             num_bags = int(num_bags) if num_bags else 0
             bag_weight = float(bag_weight) if bag_weight else 0
@@ -829,10 +831,11 @@ def second_weighing():
                 
                 first_weight = float(result['first_weight'] or 0)
                 
-                # Calculate totals
-                total_weight = abs(first_weight - second_weight)  # اجمالي الوزن
-                code_weight = num_bags * bag_weight  # كود الوزن
-                difference = abs(code_weight - total_weight)  # كود
+                # CORRECTED CALCULATIONS
+                code_weight = abs(first_weight - second_weight)  # كود الوزن = |First - Second|
+                total_weight = num_bags * bag_weight             # اجمالي الوزن = Bags × Weight
+                net_weight = code_weight                          # الصافي = same as كود الوزن
+                difference = abs(code_weight - total_weight)      # كود = difference
                 
                 # Update the intake record with second weighing data
                 cursor.execute("""
@@ -843,29 +846,33 @@ def second_weighing():
                         bag_weight = %s,
                         code_weight = %s,
                         difference = %s,
-                        receiver_name = %s
+                        receiver_name = %s,
+                        marine = %s,
+                        load_type = %s
                     WHERE id = %s
                 """, (
                     second_weight,
-                    total_weight,
+                    net_weight,      # الصافي
                     num_bags,
                     bag_weight,
-                    code_weight,
-                    difference,
+                    code_weight,     # كود الوزن
+                    difference,      # كود
                     receiver_name,
+                    marine,
+                    load_type,
                     intake_id
                 ))
                 
                 conn.commit()
             
-            flash('Second weighing completed successfully!', 'success')
-            return redirect('/second_weighing')
+            flash('تم حفظ الوزنة الثانية بنجاح!', 'success')
+            return redirect('/intake/history')  # Redirect to history to see the completed entry
             
         except Exception as e:
             print(f"Error saving second weighing: {e}")
             import traceback
             traceback.print_exc()
-            flash(f'Error saving: {str(e)}', 'danger')
+            flash(f'خطأ في الحفظ: {str(e)}', 'danger')
             return redirect('/second_weighing')
     
     # GET - Show form with pending entries
@@ -1608,6 +1615,27 @@ def intake_history():
             t=get_translations()
         )
 
+@app.route('/api/intake/<int:intake_id>', methods=['DELETE'])
+@login_required
+def delete_intake(intake_id):
+    """Delete an intake record (Admin only)"""
+    try:
+        # Check if user is admin
+        if session.get('role') != 'ADMIN':
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM intake WHERE id = %s", (intake_id,))
+            conn.commit()
+            
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Not found'}), 404
+            
+            return jsonify({'success': True})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 @app.route("/conditioning", methods=["GET", "POST"])
 @login_required
 @block_weighbridge_operator
@@ -1994,14 +2022,17 @@ def api_delete_expense(expense_id):
 def api_charts_revenue():
     """Get revenue chart data"""
     try:
+        start_date = request.args.get('start', datetime.now().strftime('%Y-%m-01'))
+        end_date = request.args.get('end', datetime.now().strftime('%Y-%m-%d'))
+        
         with get_db() as conn:
             cursor = conn.cursor(dictionary=True)
             cursor.execute("""
                 SELECT source_type, SUM(amount) as total
                 FROM accounting_revenue
-                WHERE YEAR(date) = YEAR(CURDATE()) AND MONTH(date) = MONTH(CURDATE())
+                WHERE date BETWEEN %s AND %s
                 GROUP BY source_type
-            """)
+            """, (start_date, end_date))
             data = cursor.fetchall()
             
             source_names = {
@@ -2022,14 +2053,17 @@ def api_charts_revenue():
 def api_charts_expenses():
     """Get expense chart data"""
     try:
+        start_date = request.args.get('start', datetime.now().strftime('%Y-%m-01'))
+        end_date = request.args.get('end', datetime.now().strftime('%Y-%m-%d'))
+        
         with get_db() as conn:
             cursor = conn.cursor(dictionary=True)
             cursor.execute("""
                 SELECT category, SUM(amount) as total
                 FROM accounting_expenses
-                WHERE YEAR(date) = YEAR(CURDATE()) AND MONTH(date) = MONTH(CURDATE())
+                WHERE date BETWEEN %s AND %s
                 GROUP BY category
-            """)
+            """, (start_date, end_date))
             data = cursor.fetchall()
             
             category_names = {
@@ -2761,8 +2795,8 @@ def api_intake_last():
             cursor = conn.cursor(dictionary=True)
             cursor.execute("""
                 SELECT truck_number, net_weight
-                FROM wheat_intake
-                ORDER BY date DESC, id DESC
+                FROM intake
+                ORDER BY captured_at DESC, id DESC
                 LIMIT 1
             """)
             result = cursor.fetchone()
