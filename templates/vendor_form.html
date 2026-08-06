@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t.edit_vendor if vendor else t.new_vendor }}</h1>
+<form method="POST">
+<input name="name" value="{{ vendor.name if vendor else '' }}">
+<button>{{ t.save }}</button>
+</form>
+{% endblock %}

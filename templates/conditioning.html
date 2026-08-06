@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>{{ t.conditioning }}</h1>
+<button>{{ t.add }}</button>
+
+{% if error %}
+<div style="color:red">{{ error }}</div>
+{% endif %}
+
+<form method="POST">
+
+    <label>{{ t.related_intake_optional }}</label>
+    <select name="intake_id">
+        <option value="">{{ t.not_linked }}</option>
+        {% for i in intakes %}
+        <option value="{{ i.id }}">
+            {{ t.intake }} #{{ i.id }} — {{ i.net_weight }} {{ t.kg }}
+        </option>
+        {% endfor %}
+    </select>
+
+    <label>{{ t.initial_moisture }}</label>
+    <input name="initial_moisture" step="0.01" required>
+
+    <label>{{ t.target_moisture }}</label>
+    <input name="target_moisture" step="0.01" required>
+
+    <label>{{ t.added_water }}</label>
+    <input name="added_water" step="0.1" required>
+
+    <label>{{ t.tempering_hours }}</label>
+    <input name="tempering_hours" step="0.1" required>
+
+    <button type="submit">{{ t.save_conditioning_log }}</button>
+</form>
+
+{% endblock %}

@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.dashboard-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #0f172a;
+    margin-bottom: 30px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    border-left: 5px solid #3b82f6;
+}
+
+.summary-card.weighbridge {
+    border-left-color: #8b5cf6;
+}
+
+.summary-card.packing {
+    border-left-color: #10b981;
+}
+
+.summary-card.production {
+    border-left-color: #f59e0b;
+}
+
+.card-header {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-main-value {
+    font-size: 42px;
+    font-weight: bold;
+    color: #0f172a;
+    margin-bottom: 10px;
+}
+
+.card-subtitle {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.packing-details {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.packing-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 14px;
+}
+
+.packing-line-name {
+    color: #475569;
+    font-weight: 500;
+}
+
+.packing-line-count {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.comparison-section {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
+
+.comparison-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #0f172a;
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.comparison-item {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.comparison-label {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.comparison-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #0f172a;
+}
+
+.comparison-bar {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    margin-top: 12px;
+    overflow: hidden;
+}
+
+.comparison-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #10b981);
+    transition: width 0.5s;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-online {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.status-offline {
+    background: #94a3b8;
+}
+
+.live-data {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.live-label {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 10px;
+}
+
+.live-value {
+    font-size: 56px;
+    font-weight: bold;
+}
+</style>
+
+<div class="dashboard-container">
+    <h1 class="dashboard-title">📊 {{ t.dashboard }}</h1>
+
+    <!-- Live Weighbridge -->
+    <div class="live-data">
+        <div class="live-label">🎯 {{ t.live_weighbridge }}</div>
+        <div class="live-value" id="wbWeight">-- kg</div>
+        <div class="live-label" id="wbStatus">Connecting...</div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+        <!-- Weighbridge Today -->
+        <div class="summary-card weighbridge">
+            <div class="card-header">⚖️ {{ t.weighbridge }} - {{ t.today }}</div>
+            <div class="card-main-value" id="wbTrucks">0</div>
+            <div class="card-subtitle">{{ t.trucks }} | <span id="wbTonnage">0</span> {{ t.tons }}</div>
+        </div>
+
+        <!-- Packing Today -->
+        <div class="summary-card packing">
+            <div class="card-header">📦 {{ t.packing }} - {{ t.today }}</div>
+            <div class="card-main-value" id="packingBags">0</div>
+            <div class="card-subtitle"><span id="packingTonnage">0</span> {{ t.tons }} {{ t.packed }}</div>
+            
+            <div class="packing-details">
+                <div class="packing-line">
+                    <span class="packing-line-name">
+                        <span class="status-indicator status-offline" id="status-bran"></span>
+                        Bran 40kg
+                    </span>
+                    <span class="packing-line-count" id="bags-bran">0 bags</span>
+                </div>
+                <div class="packing-line">
+                    <span class="packing-line-name">
+                        <span class="status-indicator status-offline" id="status-flour-bx3"></span>
+                        Flour 50kg (BX3)
+                    </span>
+                    <span class="packing-line-count" id="bags-flour-bx3">0 bags</span>
+                </div>
+                <div class="packing-line">
+                    <span class="packing-line-name">
+                        <span class="status-indicator status-offline" id="status-flour-bx30"></span>
+                        Flour 50kg (BX30)
+                    </span>
+                    <span class="packing-line-count" id="bags-flour-bx30">0 bags</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Production Efficiency -->
+        <div class="summary-card production">
+            <div class="card-header">📈 {{ t.production }}</div>
+            <div class="card-main-value" id="efficiency">0%</div>
+            <div class="card-subtitle">{{ t.efficiency }} | <span id="utilizationRate">0</span> TPD</div>
+        </div>
+    </div>
+
+    <!-- Comparison: Intake vs Output -->
+    <div class="comparison-section">
+        <div class="comparison-title">📊 Intake vs. Output Comparison (Today)</div>
+        <div class="comparison-grid">
+            <div class="comparison-item">
+                <div class="comparison-label">⚖️ Wheat Intake (Weighbridge)</div>
+                <div class="comparison-value"><span id="intakeTons">0</span> tons</div>
+                <div class="comparison-bar">
+                    <div class="comparison-bar-fill" id="intakeBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="comparison-item">
+                <div class="comparison-label">📦 Total Output (Packing)</div>
+                <div class="comparison-value"><span id="outputTons">0</span> tons</div>
+                <div class="comparison-bar">
+                    <div class="comparison-bar-fill" id="outputBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="comparison-item">
+                <div class="comparison-label">⚡ Conversion Rate</div>
+                <div class="comparison-value"><span id="conversionRate">0</span>%</div>
+                <div class="comparison-bar">
+                    <div class="comparison-bar-fill" id="conversionBar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="card-header">🏭 {{ t.milling_lines }}</div>
+            <div class="card-main-value">2</div>
+            <div class="card-subtitle">120 TPD</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="card-header">📦 {{ t.packing_lines }}</div>
+            <div class="card-main-value">3</div>
+            <div class="card-subtitle">{{ t.flour }} & {{ t.bran }}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="card-header">⚡ {{ t.daily_capacity }}</div>
+            <div class="card-main-value">240</div>
+            <div class="card-subtitle">{{ t.tons_day }}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="card-header">💾 {{ t.system_status }}</div>
+            <div class="card-main-value status-ok">{{ t.operational }}</div>
+            <div class="card-subtitle">MySQL Connected</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Update every second
+setInterval(updateDashboard, 1000);
+updateDashboard();
+
+function updateDashboard() {
+    // Update weighbridge
+    fetch("/api/weighbridge")
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById("wbWeight").innerText = d.weight + " kg";
+            document.getElementById("wbStatus").innerText = d.online ? "● Online" : "○ Offline";
+        })
+        .catch(err => {
+            document.getElementById("wbWeight").innerText = "-- kg";
+            document.getElementById("wbStatus").innerText = "○ Offline";
+        });
+
+    // Update packing status
+    fetch("/api/packing/status")
+        .then(r => r.json())
+        .then(data => {
+            let totalBags = 0;
+            let totalWeight = 0;
+
+            // Update each machine
+            if (data.bran_40kg) {
+                const bags = data.bran_40kg.bag_count || 0;
+                const weight = data.bran_40kg.total_weight || 0;
+                totalBags += bags;
+                totalWeight += weight;
+                
+                document.getElementById('bags-bran').textContent = bags + ' bags';
+                document.getElementById('status-bran').className = 
+                    'status-indicator ' + (data.bran_40kg.online ? 'status-online' : 'status-offline');
+            }
+
+            if (data.flour_50kg_bx3) {
+                const bags = data.flour_50kg_bx3.bag_count || 0;
+                const weight = data.flour_50kg_bx3.total_weight || 0;
+                totalBags += bags;
+                totalWeight += weight;
+                
+                document.getElementById('bags-flour-bx3').textContent = bags + ' bags';
+                document.getElementById('status-flour-bx3').className = 
+                    'status-indicator ' + (data.flour_50kg_bx3.online ? 'status-online' : 'status-offline');
+            }
+
+            if (data.flour_50kg_bx30) {
+                const bags = data.flour_50kg_bx30.bag_count || 0;
+                const weight = data.flour_50kg_bx30.total_weight || 0;
+                totalBags += bags;
+                totalWeight += weight;
+                
+                document.getElementById('bags-flour-bx30').textContent = bags + ' bags';
+                document.getElementById('status-flour-bx30').className = 
+                    'status-indicator ' + (data.flour_50kg_bx30.online ? 'status-online' : 'status-offline');
+            }
+
+            // Update totals
+            document.getElementById('packingBags').textContent = totalBags;
+            document.getElementById('packingTonnage').textContent = (totalWeight / 1000).toFixed(2);
+            document.getElementById('outputTons').textContent = (totalWeight / 1000).toFixed(2);
+            
+            // Update output bar
+            const outputPercent = Math.min((totalWeight / 1000) / 100 * 100, 100);
+            document.getElementById('outputBar').style.width = outputPercent + '%';
+        })
+        .catch(err => console.error('Packing error:', err));
+
+    // Update weighbridge stats (today's totals)
+    fetch("/api/intake/today")
+        .then(r => r.json())
+        .then(data => {
+            const trucks = data.truck_count || 0;
+            const tonnage = data.total_weight || 0;
+            
+            document.getElementById('wbTrucks').textContent = trucks;
+            document.getElementById('wbTonnage').textContent = (tonnage / 1000).toFixed(2);
+            document.getElementById('intakeTons').textContent = (tonnage / 1000).toFixed(2);
+            
+            // Update intake bar
+            const intakePercent = Math.min((tonnage / 1000) / 100 * 100, 100);
+            document.getElementById('intakeBar').style.width = intakePercent + '%';
+            
+            // Calculate conversion rate
+            const packingTons = parseFloat(document.getElementById('packingTonnage').textContent) || 0;
+            const intakeTons = tonnage / 1000;
+            
+            if (intakeTons > 0) {
+                const conversion = (packingTons / intakeTons * 100).toFixed(1);
+                document.getElementById('conversionRate').textContent = conversion;
+                document.getElementById('conversionBar').style.width = Math.min(conversion, 100) + '%';
+            } else {
+                document.getElementById('conversionRate').textContent = '0';
+                document.getElementById('conversionBar').style.width = '0%';
+            }
+            
+            // Calculate efficiency
+            const capacity = 240; // tons per day
+            const utilization = intakeTons > 0 ? (intakeTons / capacity * 100).toFixed(1) : 0;
+            document.getElementById('efficiency').textContent = utilization + '%';
+            document.getElementById('utilizationRate').textContent = intakeTons.toFixed(1);
+        })
+        .catch(err => console.error('Intake error:', err));
+}
+</script>
+
+{% endblock %}

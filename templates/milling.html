@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t.milling }}</h1>
+<button>{{ t.add }}</button>
+<table>
+<tr><th>{{ t.milling_line }}</th><th>{{ t.wheat_used }}</th><th>{{ t.extraction_rate }}</th></tr>
+{% for b in batches %}
+<tr><td>{{ b.line }}</td><td>{{ b.wheat }}</td><td>{{ b.yield }}</td></tr>
+{% endfor %}
+</table>
+{% endblock %}

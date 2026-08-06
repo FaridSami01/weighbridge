@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>{{ t.wheat_intake }}</h1>
+<button>{{ t.add }}</button>
+
+<div style="background:#fff;padding:15px;margin-bottom:20px">
+    <b>{{ t.live_weighbridge }}</b>
+    <div style="background:#eee;height:25px;margin-top:10px">
+        <div class="progress">
+            <div id="weightBar" class="progress-bar"></div>
+        </div>
+    </div>
+    <p>{{ t.current_weight }}:
+        <b><span id="weightValue">0</span> {{ t.kg }}</b>
+    </p>
+</div>
+
+<form method="post">
+
+    <label>{{ t.truck_number }}</label><br>
+    <input name="truck" required><br><br>
+
+    <label>{{ t.vendor }}</label><br>
+    <select name="vendor">
+        <option>{{ t.example_vendor_1 }}</option>
+        <option>{{ t.example_vendor_2 }}</option>
+    </select><br><br>
+
+    <label>{{ t.net_weight }}</label><br>
+    <input id="netWeight" name="net_weight" readonly><br><br>
+
+    <label>{{ t.moisture }}</label><br>
+    <input name="moisture" step="0.1"><br><br>
+
+    <label>{{ t.protein }}</label><br>
+    <input name="protein" step="0.1"><br><br>
+
+    <button type="submit">{{ t.save_intake }}</button>
+</form>
+
+<script>
+function fetchWeight() {
+    fetch("/device/weighbridge")
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("weightValue").innerText = data.weight;
+            document.getElementById("netWeight").value = data.weight;
+            document.getElementById("weightBar").style.width =
+                Math.min(data.weight / 35000 * 100, 100) + "%";
+        });
+}
+setInterval(fetchWeight, 2000);
+</script>
+
+{% endblock %}

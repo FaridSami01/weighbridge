@@ -1,0 +1,651 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* Second Weighing Form Styling */
+.weighing-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.weighbridge-display {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.weight-reading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.weight-value {
+    font-size: 72px;
+    font-weight: bold;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 10px rgba(0,255,0,0.5);
+    background: #000;
+    padding: 20px 40px;
+    border-radius: 10px;
+    border: 3px solid #00ff00;
+    min-width: 300px;
+}
+
+.weight-unit {
+    font-size: 48px;
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+}
+
+.status-online {
+    background: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+.status-offline {
+    background: #ff0000;
+    box-shadow: 0 0 10px #ff0000;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.weighbridge-title {
+    color: #fff;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.weighbridge-status {
+    color: #fff;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.weighing-form-container {
+    background: #fff;
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.form-header {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px 8px 0 0;
+    margin: -30px -30px 30px -30px;
+    text-align: center;
+}
+
+.form-header h2 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 14px;
+    min-width: 140px;
+    text-align: right;
+    direction: rtl;
+}
+
+.form-group input,
+.form-group select {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 15px;
+    background: #fff;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* LOCKED fields (from first weighing) - gray background */
+.form-group input[readonly].locked {
+    background: #ecf0f1;
+    cursor: not-allowed;
+    border-color: #95a5a6;
+    color: #34495e;
+    font-weight: 600;
+}
+
+/* EDITABLE fields (new in second weighing) - white/yellow background */
+.form-group input.editable {
+    background: #fffbea;
+    border-left: 4px solid #f39c12;
+}
+
+.weight-display {
+    background: #e8f8f5 !important;
+    font-weight: bold;
+    color: #27ae60;
+    font-size: 18px;
+    text-align: center;
+}
+
+.calculated-weight {
+    background: #fff9e6 !important;
+    font-weight: bold;
+    color: #e67e22;
+    font-size: 18px;
+    text-align: center;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 15px 40px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-capture {
+    background: #27ae60;
+    color: white;
+}
+
+.btn-capture:hover {
+    background: #229954;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-save {
+    background: #3498db;
+    color: white;
+}
+
+.btn-save:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-exit {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-exit:hover {
+    background: #c0392b;
+}
+
+.btn-print {
+    background: #95a5a6;
+    color: white;
+}
+
+.btn-print:hover {
+    background: #7f8c8d;
+}
+
+.record-selector {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #ecf0f1;
+    border-radius: 6px;
+}
+
+.record-selector select {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: 2px solid #3498db;
+    border-radius: 6px;
+    min-width: 300px;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.field-legend {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.field-legend span {
+    margin-right: 20px;
+}
+
+.locked-badge {
+    background: #95a5a6;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.editable-badge {
+    background: #f39c12;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+</style>
+
+<div class="weighing-container">
+    <h1 style="text-align: center; margin-bottom: 30px;">الوزنة الثانية / Second Weighing</h1>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    <!-- Live Weighbridge Display -->
+    <div class="weighbridge-display">
+        <div class="weighbridge-title">
+            <span class="status-indicator" id="statusIndicator"></span>
+            {{ t.live_weighbridge }}
+        </div>
+        <div class="weight-reading">
+            <div class="weight-value" id="liveWeight">0</div>
+            <div class="weight-unit">Kg</div>
+        </div>
+        <div class="weighbridge-status" id="statusText">{{ t.offline }}</div>
+    </div>
+
+    <!-- Select Record for Second Weighing -->
+    <div class="record-selector">
+        <label><strong>اختر رقم السيارة / Select Record for Second Weighing:</strong></label>
+        <select id="recordSelector" onchange="loadRecord()">
+            <option value="">-- اختر سجل / Select Record --</option>
+            {% for record in pending_records %}
+            <option value="{{ record.id }}">
+                رقم {{ record.id }} - سيارة {{ record.truck }} - {{ record.gross_weight }} كجم - {{ record.vendor }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Field Legend -->
+    <div class="field-legend">
+        <strong>Legend:</strong>
+        <span><span class="locked-badge">🔒 LOCKED</span> = From first weighing (cannot edit)</span>
+        <span><span class="editable-badge">✏️ EDITABLE</span> = New data for second weighing</span>
+    </div>
+
+    <!-- Second Weighing Form -->
+    <div class="weighing-form-container">
+        <div class="form-header">
+            <h2>ميزان بسكول شركة مطاحن المهندس الحديثة</h2>
+            <p style="margin: 5px 0 0 0; font-size: 16px;">Al Mohandes Modern Mills - Weighbridge Scale</p>
+        </div>
+
+        <form method="POST" id="weighingForm">
+            <input type="hidden" name="intake_id" id="intake_id">
+
+            <div class="form-grid">
+                
+                <!-- LEFT COLUMN -->
+                <div class="form-column">
+                    <!-- EDITABLE: Impurities Weight -->
+                    <div class="form-group">
+                        <label>وزن الشوال: <span class="editable-badge">✏️</span></label>
+                        <input type="number" name="impurities_weight" id="impurities_weight" 
+                               class="editable" value="51">
+                    </div>
+
+                    <!-- AUTO: Weight Code -->
+                    <div class="form-group">
+                        <label>كود الوزن:</label>
+                        <input type="text" name="weight_code" id="weight_code" 
+                               class="locked" readonly>
+                    </div>
+
+                    <!-- EDITABLE: Code -->
+                    <div class="form-group">
+                        <label>كود: <span class="editable-badge">✏️</span></label>
+                        <input type="number" name="code" id="code" 
+                               class="editable" value="0">
+                    </div>
+
+                    <!-- EDITABLE: Operator 2 -->
+                    <div class="form-group">
+                        <label>اسم المشغل 2: <span class="editable-badge">✏️</span></label>
+                        <input type="text" name="operator2" id="operator2" 
+                               class="editable" value="{{ session.get('user') }}">
+                    </div>
+                </div>
+
+                <!-- CENTER COLUMN -->
+                <div class="form-column">
+                    <!-- EDITABLE: Invoice Number -->
+                    <div class="form-group">
+                        <label>رقم المقطورة: <span class="editable-badge">✏️</span></label>
+                        <input type="text" name="invoice_number" id="invoice_number" 
+                               class="editable" value="0">
+                    </div>
+
+                    <!-- LOCKED: Client Name (from first weighing) -->
+                    <div class="form-group">
+                        <label>اسم العميل: <span class="locked-badge">🔒</span></label>
+                        <input type="text" name="client_name" id="client_name" 
+                               class="locked" readonly>
+                    </div>
+
+                    <!-- EDITABLE: Quality/Type -->
+                    <div class="form-group">
+                        <label>النوع: <span class="editable-badge">✏️</span></label>
+                        <input type="text" name="quality" id="quality" 
+                               class="editable">
+                    </div>
+
+                    <!-- AUTO: Current Weight Value -->
+                    <div class="form-group">
+                        <label>قيمة الوزن:</label>
+                        <input type="number" name="weight_value" id="weight_value" 
+                               class="weight-display" readonly value="0">
+                    </div>
+
+                    <!-- EDITABLE: Bags Count -->
+                    <div class="form-group">
+                        <label>عدد الاونابة: <span class="editable-badge">✏️</span></label>
+                        <input type="number" name="bags_count" id="bags_count" 
+                               class="editable" value="0">
+                    </div>
+
+                    <!-- CALCULATED: Total Weight -->
+                    <div class="form-group">
+                        <label>اجمالي الوزن:</label>
+                        <input type="number" name="total_weight" id="total_weight" 
+                               class="calculated-weight" readonly value="0">
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="form-column">
+                    <!-- LOCKED: Vehicle Number (from first weighing) -->
+                    <div class="form-group">
+                        <label>رقم السيارة: <span class="locked-badge">🔒</span></label>
+                        <input type="text" name="truck_number" id="truck_number" 
+                               class="locked" readonly>
+                    </div>
+
+                    <!-- AUTO: Car Number (Record ID) -->
+                    <div class="form-group">
+                        <label>رقم:</label>
+                        <input type="number" name="car_number" id="car_number" 
+                               class="locked" readonly value="0">
+                    </div>
+
+                    <!-- LOCKED: Governorate (from first weighing) -->
+                    <div class="form-group">
+                        <label>المحافظة: <span class="locked-badge">🔒</span></label>
+                        <input type="text" name="governorate" id="governorate" 
+                               class="locked" readonly>
+                    </div>
+
+                    <!-- LOCKED: Load (from first weighing) -->
+                    <div class="form-group">
+                        <label>الحمولة: <span class="locked-badge">🔒</span></label>
+                        <input type="text" name="load" id="load" 
+                               class="locked" readonly>
+                    </div>
+
+                    <!-- EDITABLE: Driver Name -->
+                    <div class="form-group">
+                        <label>اسم السائق: <span class="editable-badge">✏️</span></label>
+                        <input type="text" name="driver_name" id="driver_name" 
+                               class="editable">
+                    </div>
+
+                    <!-- LOCKED: Operator 1 (from first weighing) -->
+                    <div class="form-group">
+                        <label>اسم مشغل 1: <span class="locked-badge">🔒</span></label>
+                        <input type="text" name="operator1" id="operator1" 
+                               class="locked" readonly>
+                    </div>
+
+                    <!-- LOCKED: First Weight (from first weighing) -->
+                    <div class="form-group">
+                        <label>الوزنة الاولى: <span class="locked-badge">🔒</span></label>
+                        <input type="number" name="first_weight" id="first_weight" 
+                               class="weight-display locked" readonly>
+                    </div>
+
+                    <!-- AUTO: Second Weight (captured now) -->
+                    <div class="form-group">
+                        <label>الوزنة الثانية:</label>
+                        <input type="number" name="second_weight" id="second_weight" 
+                               class="weight-display" readonly value="0">
+                    </div>
+
+                    <!-- CALCULATED: Net Weight -->
+                    <div class="form-group">
+                        <label>الصافي:</label>
+                        <input type="number" name="net_weight" id="net_weight" 
+                               class="calculated-weight" readonly>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button type="button" class="btn btn-capture" onclick="captureSecondWeight()">
+                    ⚖️ التقاط الوزن / Capture Weight
+                </button>
+                <button type="submit" class="btn btn-save">
+                    💾 حفظ / Save
+                </button>
+                <button type="button" class="btn btn-print" onclick="printRecord()">
+                    🖨️ طباعة / Print
+                </button>
+                <button type="button" class="btn btn-exit" onclick="exitForm()">
+                    🗑️ خروج / Exit
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentWeight = 0;
+let isOnline = false;
+
+// Update live weight
+function updateWeight() {
+    fetch("/api/weighbridge")
+        .then(r => r.json())
+        .then(data => {
+            currentWeight = data.weight;
+            isOnline = data.online;
+            
+            document.getElementById("liveWeight").innerText = currentWeight;
+            
+            const indicator = document.getElementById("statusIndicator");
+            const statusText = document.getElementById("statusText");
+            
+            if (isOnline) {
+                indicator.className = "status-indicator status-online";
+                statusText.innerText = "{{ t.online }}";
+            } else {
+                indicator.className = "status-indicator status-offline";
+                statusText.innerText = "{{ t.offline }}" + (data.demo_mode ? " (Demo Mode)" : "");
+            }
+        })
+        .catch(err => console.error("Weighbridge error:", err));
+}
+
+// Load selected record
+function loadRecord() {
+    const recordId = document.getElementById("recordSelector").value;
+    
+    if (!recordId) {
+        clearForm();
+        return;
+    }
+    
+    fetch(`/api/intake/${recordId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const record = data.record;
+                
+                // POPULATE LOCKED FIELDS (from first weighing)
+                document.getElementById("intake_id").value = record.id;
+                document.getElementById("truck_number").value = record.truck || "";
+                document.getElementById("car_number").value = record.id || 0;
+                document.getElementById("client_name").value = record.vendor || "";
+                document.getElementById("governorate").value = record.governorate || "";
+                document.getElementById("load").value = record.load_type || "";
+                document.getElementById("first_weight").value = record.gross_weight || 0;
+                document.getElementById("operator1").value = record.captured_by || "";
+                document.getElementById("weight_code").value = `W${record.id}`;
+                
+                // EDITABLE fields remain empty or with defaults
+                // User can fill: quality, driver_name, invoice_number, bags_count, code
+                
+                calculateWeights();
+            }
+        })
+        .catch(err => {
+            alert("Error loading record: " + err);
+        });
+}
+
+// Capture second weight
+function captureSecondWeight() {
+    if (currentWeight > 0) {
+        document.getElementById("second_weight").value = currentWeight;
+        document.getElementById("weight_value").value = currentWeight;
+        calculateWeights();
+        
+        const btn = event.target;
+        btn.innerText = "✅ الوزن محفوظ / Weight Captured!";
+        btn.style.background = "#27ae60";
+        
+        setTimeout(() => {
+            btn.innerText = "⚖️ التقاط الوزن / Capture Weight";
+            btn.style.background = "";
+        }, 2000);
+    } else {
+        alert("No weight detected! Ensure vehicle is on scale.");
+    }
+}
+
+// Calculate net weight
+function calculateWeights() {
+    const firstWeight = parseFloat(document.getElementById("first_weight").value) || 0;
+    const secondWeight = parseFloat(document.getElementById("second_weight").value) || 0;
+    const impuritiesWeight = parseFloat(document.getElementById("impurities_weight").value) || 0;
+    
+    // Net weight = First weight - Second weight - Impurities
+    const netWeight = firstWeight - secondWeight - impuritiesWeight;
+    const totalWeight = Math.max(0, netWeight);
+    
+    document.getElementById("net_weight").value = netWeight;
+    document.getElementById("total_weight").value = totalWeight;
+}
+
+// Print record
+function printRecord() {
+    const intakeId = document.getElementById("intake_id").value;
+    if (intakeId) {
+        window.open(`/print-weighbridge/${intakeId}`, '_blank');
+    } else {
+        alert("Please select a record first!");
+    }
+}
+
+// Exit form
+function exitForm() {
+    if (confirm("Exit and clear form?")) {
+        window.location.href = "/intake/history";
+    }
+}
+
+// Clear form
+function clearForm() {
+    document.getElementById("weighingForm").reset();
+    document.getElementById("intake_id").value = "";
+    document.getElementById("net_weight").value = "";
+    document.getElementById("total_weight").value = "";
+    document.getElementById("operator2").value = "{{ session.get('user') }}";
+}
+
+// Auto-update weight
+setInterval(updateWeight, 1000);
+updateWeight();
+
+// Recalculate on impurities change
+document.getElementById("impurities_weight").addEventListener("input", calculateWeights);
+</script>
+
+{% endblock %}

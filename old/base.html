@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ t.mill_name }}</title>
+
+    <!-- MUST MATCH YOUR CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+    /* RTL (Arabic) - content margin on right side */
+    html[dir="rtl"] .main {
+        margin-right: 250px !important;
+        margin-left: 0 !important;
+    }
+
+    /* LTR (English) - content margin on left side */
+    html[dir="ltr"] .main {
+        margin-left: 250px !important;
+        margin-right: 0 !important;
+    }
+
+    /* Sidebar positioning for RTL */
+    html[dir="rtl"] .sidebar {
+        right: 0 !important;
+        left: auto !important;
+    }
+
+    /* Sidebar positioning for LTR */
+    html[dir="ltr"] .sidebar {
+        left: 0 !important;
+        right: auto !important;
+    }
+
+    /* Prevent horizontal scrolling */
+    body {
+        overflow-x: hidden;
+    }
+    </style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="brand-title">{{ t.mill_name }}</div>
+        <div class="brand-sub">{{ t.mill_name_ar }}</div>
+
+        <div class="nav">
+            {% if session.get("role") == "OPERATOR" %}
+                <!-- WEIGHBRIDGE OPERATOR MENU (LIMITED) -->
+                <a href="/weighbridge_dashboard">⚖️ Weighbridge</a>
+                <a href="/intake">{{ t.wheat_intake }}</a>
+                <a href="/weighing/second">Second Weighing</a>
+                <a href="/intake/history">{{ t.intake_history }}</a>
+            {% else %}
+                <!-- ADMIN/FULL ACCESS MENU -->
+                <a href="/dashboard">{{ t.dashboard }}</a>
+                <a href="/intake">{{ t.wheat_intake }}</a>
+                <a href="/weighing/second">Second Weighing</a>
+                <a href="/intake/history">{{ t.intake_history }}</a>
+                <a href="/conditioning">{{ t.conditioning }}</a>
+                <a href="/conditioning/history">{{ t.conditioning_history }}</a>
+                <a href="/vendors">{{ t.vendors }}</a>
+                <a href="/packing">{{ t.packing }}</a>
+                <a href="/accounting">{{ t.accounting }}</a>
+                <a href="/stock">{{ t.stock }}</a>
+                <a href="/reports">{{ t.reports }}</a>
+
+                <div class="nav-divider"></div>
+
+                {% if session.get("role") == "ADMIN" %}
+                <a href="/admin" class="nav-admin">{{ t.admin }}</a>
+                {% endif %}
+            {% endif %}
+
+            <div class="nav-divider"></div>
+
+            <a href="/lang/en">EN</a>
+            <a href="/lang/ar">ع</a>
+
+            <div class="nav-divider"></div>
+
+            <a href="/logout" class="nav-logout">{{ t.logout }}</a>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" style="padding: 15px; margin-bottom: 20px; border-radius: 8px; background: {% if category == 'danger' %}#fee2e2{% elif category == 'warning' %}#fef3c7{% else %}#dcfce7{% endif %}; color: {% if category == 'danger' %}#991b1b{% elif category == 'warning' %}#92400e{% else %}#166534{% endif %};">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

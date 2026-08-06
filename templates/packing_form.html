@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t.new_packing_session }}</h1>
+<button>{{ t.add }}</button>
+<form method="post">
+<label>{{ t.packing_line }}</label>
+<select name="line"><option>Line 1</option><option>Line 2</option><option>Line 3</option></select>
+<label>{{ t.product }}</label>
+<select name="product">
+<option value="Flour 50kg">{{ t.flour }} 50 {{ t.kg }}</option>
+<option value="Bran 15kg">{{ t.bran }} 15 {{ t.kg }}</option>
+<option value="Bran 25kg">{{ t.bran }} 25 {{ t.kg }}</option>
+</select>
+<input name="bag_weight" value="50">
+<button>{{ t.save_packing }}</button>
+</form>
+{% endblock %}

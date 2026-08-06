@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t.mill_name }}</title>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#1e3c72">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mill System">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/icon-512.png">
+
+    <!-- MUST MATCH YOUR CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+    /* RTL (Arabic) - content margin on right side */
+    html[dir="rtl"] .main {
+        margin-right: 250px !important;
+        margin-left: 0 !important;
+    }
+
+    /* LTR (English) - content margin on left side */
+    html[dir="ltr"] .main {
+        margin-left: 250px !important;
+        margin-right: 0 !important;
+    }
+
+    /* Sidebar positioning for RTL */
+    html[dir="rtl"] .sidebar {
+        right: 0 !important;
+        left: auto !important;
+    }
+
+    /* Sidebar positioning for LTR */
+    html[dir="ltr"] .sidebar {
+        left: 0 !important;
+        right: auto !important;
+    }
+
+    /* Prevent horizontal scrolling */
+    body {
+        overflow-x: hidden;
+    }
+    </style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="brand-title">{{ t.mill_name }}</div>
+        <div class="brand-sub">{{ t.mill_name_ar }}</div>
+
+        <div class="nav">
+            {% if session.get("role") == "OPERATOR" %}
+                <!-- WEIGHBRIDGE OPERATOR MENU (LIMITED) -->
+                <a href="/weighbridge_dashboard">⚖️ Weighbridge</a>
+                <a href="/intake">{{ t.wheat_intake }}</a>
+                <a href="/second_weighing">⚖️ الوزنة الثانية</a>
+                <a href="/intake/history">{{ t.intake_history }}</a>
+                <a href="/vendors">{{ t.vendors }}</a>
+            {% else %}
+                <!-- ADMIN/FULL ACCESS MENU -->
+                <a href="/dashboard">{{ t.dashboard }}</a>
+                <a href="/intake">{{ t.wheat_intake }}</a>
+                <a href="/second_weighing">⚖️ الوزنة الثانية / Second Weighing</a>
+                <a href="/intake/history">{{ t.intake_history }}</a>
+                <a href="/conditioning">{{ t.conditioning }}</a>
+                <a href="/conditioning/history">{{ t.conditioning_history }}</a>
+                <a href="/vendors">{{ t.vendors }}</a>
+                <a href="/packing">{{ t.packing }}</a>
+                <a href="/accounting">{{ t.accounting }}</a>
+                <a href="/stock">{{ t.stock }}</a>
+                <a href="/reports">{{ t.reports }}</a>
+
+                <div class="nav-divider"></div>
+
+                {% if session.get("role") == "ADMIN" %}
+                <a href="/admin" class="nav-admin">{{ t.admin }}</a>
+                {% endif %}
+            {% endif %}
+
+            <div class="nav-divider"></div>
+
+            <a href="/lang/en">EN</a>
+            <a href="/lang/ar">ع</a>
+
+            <div class="nav-divider"></div>
+
+            <a href="/logout" class="nav-logout">{{ t.logout }}</a>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" style="padding: 15px; margin-bottom: 20px; border-radius: 8px; background: {% if category == 'danger' %}#fee2e2{% elif category == 'warning' %}#fef3c7{% else %}#dcfce7{% endif %}; color: {% if category == 'danger' %}#991b1b{% elif category == 'warning' %}#92400e{% else %}#166534{% endif %};">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Install App Button (only shows when app can be installed) -->
+<button id="installButton" style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 15px 25px; background: #1e3c72; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-size: 14px; font-weight: bold; z-index: 10000;">
+    📱 تثبيت التطبيق<br><small>Install App</small>
+</button>
+
+<!-- PWA Service Worker -->
+<script>
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+            .then(registration => {
+                console.log('✅ Service Worker registered');
+                
+                // Check for updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            if (confirm('تحديث جديد متاح!\nNew update available! Reload?')) {
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                window.location.reload();
+                            }
+                        }
+                    });
+                });
+            })
+            .catch(err => console.log('Service Worker failed:', err));
+    });
+}
+
+// Install App Prompt
+let deferredPrompt;
+const installButton = document.getElementById('installButton');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installButton.style.display = 'block';
+    console.log('💡 App can be installed');
+});
+
+installButton.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+        console.log('✅ App installed');
+    }
+    
+    deferredPrompt = null;
+    installButton.style.display = 'none';
+});
+
+window.addEventListener('appinstalled', () => {
+    console.log('✅ App installed');
+    installButton.style.display = 'none';
+});
+
+// Hide install button if already installed
+if (window.matchMedia('(display-mode: standalone)').matches) {
+    installButton.style.display = 'none';
+}
+</script>
+
+</body>
+</html>

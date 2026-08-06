@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t.mill_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px 0;
+        }
+
+        /* Background with wheat/silos image */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('/static/wheat.jpg') center/cover no-repeat;
+            filter: brightness(0.5);
+            z-index: -2;
+        }
+
+        /* Dark overlay for better text contrast */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            color: white;
+            max-width: 600px;
+            padding: 40px 20px;
+        }
+
+        .logo-section {
+            margin-bottom: 40px;
+        }
+
+        .logo-circle {
+            width: 140px;
+            height: 140px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 70px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .company-name {
+            font-size: 48px;
+            font-weight: 900;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            margin-bottom: 15px;
+            letter-spacing: -1px;
+        }
+
+        .company-name-ar {
+            font-size: 36px;
+            font-weight: 700;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            margin-bottom: 30px;
+            opacity: 0.95;
+        }
+
+        .tagline {
+            font-size: 18px;
+            margin-bottom: 50px;
+            opacity: 0.9;
+            line-height: 1.6;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 50px;
+            padding: 0 20px;
+        }
+
+        .feature-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 25px 15px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-box:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 42px;
+            margin-bottom: 12px;
+        }
+
+        .feature-label {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.95;
+        }
+
+        .feature-label-ar {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .signin-button {
+            display: inline-block;
+            background: white;
+            color: #1565c0;
+            text-decoration: none;
+            padding: 20px 60px;
+            border-radius: 50px;
+            font-size: 20px;
+            font-weight: 700;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            margin-bottom: 40px;
+        }
+
+        .signin-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            background: #f8fafc;
+        }
+
+        .signin-button:active {
+            transform: translateY(-1px);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.85;
+            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .footer-text {
+            margin-top: 40px;
+            font-size: 13px;
+            opacity: 0.7;
+            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .company-name {
+                font-size: 36px;
+            }
+
+            .company-name-ar {
+                font-size: 28px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .stats-row {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .signin-button {
+                padding: 18px 50px;
+                font-size: 18px;
+            }
+        }
+
+        /* Pulse animation for button */
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 15px 50px rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        .signin-button {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Image -->
+    <div class="background"></div>
+    
+    <!-- Dark Overlay -->
+    <div class="overlay"></div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Logo -->
+        <div class="logo-section">
+            <div class="logo-circle">🌾</div>
+            <h1 class="company-name">{{ t.mill_name }}</h1>
+            <p class="company-name-ar">{{ t.mill_name_ar }}</p>
+        </div>
+
+        <!-- Tagline -->
+        <p class="tagline">
+            Advanced Mill Management System<br>
+            نظام إدارة المطاحن المتقدم
+        </p>
+
+        <!-- Features Grid -->
+        <div class="features-grid">
+            <div class="feature-box">
+                <div class="feature-icon">⚖️</div>
+                <div class="feature-label">Weighbridge</div>
+                <div class="feature-label-ar">ميزان الجسر</div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-icon">📦</div>
+                <div class="feature-label">Packing</div>
+                <div class="feature-label-ar">التعبئة</div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-icon">📊</div>
+                <div class="feature-label">Analytics</div>
+                <div class="feature-label-ar">التحليلات</div>
+            </div>
+        </div>
+
+        <!-- Sign In Button -->
+        <a href="/login" class="signin-button">
+            🔐 {{ t.enter_system }}
+        </a>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat">
+                <div class="stat-value">240</div>
+                <div class="stat-label">TPD Capacity</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Packing Lines</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">24/7</div>
+                <div class="stat-label">Monitoring</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-text">
+            © 2026 Al Mohandes Modern Mills
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>{{ t.conditioning_history }}</h1>
+<button>{{ t.add }}</button>
+
+<table>
+    <tr>
+        <th>{{ t.date }}</th>
+        <th>{{ t.initial_moisture }}</th>
+        <th>{{ t.target_moisture }}</th>
+        <th>{{ t.added_water }}</th>
+        <th>{{ t.tempering_hours }}</th>
+        <th>{{ t.operator }}</th>
+    </tr>
+
+    {% for r in records %}
+    <tr>
+        <td>{{ r.captured_at }}</td>
+        <td>{{ r.initial_moisture }}</td>
+        <td>{{ r.target_moisture }}</td>
+        <td>{{ r.added_water_liters }}</td>
+        <td>{{ r.tempering_hours }}</td>
+        <td>{{ r.captured_by }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

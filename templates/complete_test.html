@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weighbridge Complete Test</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .status-box {
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .online {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        .offline {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .weight-display {
+            font-size: 72px;
+            font-weight: bold;
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .info-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        .raw-json {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            margin: 20px 0;
+        }
+        .update-time {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 Weighbridge Complete Test</h1>
+        
+        <div class="status-box" id="statusBox">
+            <span id="statusIcon">⏳</span>
+            <span id="statusText">Checking...</span>
+        </div>
+        
+        <div class="weight-display" id="weightDisplay">
+            --- kg
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">API Status</div>
+                <div class="info-value" id="apiStatus">Unknown</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Updates Received</div>
+                <div class="info-value" id="updateCount">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Demo Mode</div>
+                <div class="info-value" id="demoMode">Unknown</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Last Update</div>
+                <div class="info-value" id="lastUpdate">Never</div>
+            </div>
+        </div>
+        
+        <div class="test-buttons">
+            <button class="btn btn-primary" onclick="fetchNow()">🔄 Fetch Now</button>
+            <button class="btn btn-primary" onclick="toggleAutoUpdate()">
+                <span id="autoUpdateText">⏸️ Stop Auto-Update</span>
+            </button>
+        </div>
+        
+        <div class="raw-json" id="rawJson">Waiting for data...</div>
+        
+        <div class="update-time" id="updateTime">
+            Auto-updating every 1 second
+        </div>
+    </div>
+    
+    <script>
+        let updateCount = 0;
+        let autoUpdate = true;
+        let updateInterval;
+        
+        function fetchWeighbridge() {
+            fetch('/api/weighbridge')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    updateCount++;
+                    
+                    // Update status
+                    const statusBox = document.getElementById('statusBox');
+                    const statusIcon = document.getElementById('statusIcon');
+                    const statusText = document.getElementById('statusText');
+                    
+                    if (data.online) {
+                        statusBox.className = 'status-box online';
+                        statusIcon.textContent = '🟢';
+                        statusText.textContent = 'ONLINE';
+                    } else {
+                        statusBox.className = 'status-box offline';
+                        statusIcon.textContent = '🔴';
+                        statusText.textContent = 'OFFLINE';
+                    }
+                    
+                    // Update weight
+                    document.getElementById('weightDisplay').textContent = data.weight + ' kg';
+                    
+                    // Update info grid
+                    document.getElementById('apiStatus').textContent = '✅ Working';
+                    document.getElementById('updateCount').textContent = updateCount;
+                    document.getElementById('demoMode').textContent = data.demo_mode ? 'Yes' : 'No';
+                    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                    
+                    // Show raw JSON with syntax highlighting
+                    document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('statusBox').className = 'status-box offline';
+                    document.getElementById('statusIcon').textContent = '❌';
+                    document.getElementById('statusText').textContent = 'API ERROR';
+                    document.getElementById('apiStatus').textContent = '❌ Failed';
+                    document.getElementById('rawJson').textContent = `Error: ${error.message}`;
+                });
+        }
+        
+        function fetchNow() {
+            fetchWeighbridge();
+        }
+        
+        function toggleAutoUpdate() {
+            autoUpdate = !autoUpdate;
+            const btn = document.getElementById('autoUpdateText');
+            
+            if (autoUpdate) {
+                btn.textContent = '⏸️ Stop Auto-Update';
+                startAutoUpdate();
+            } else {
+                btn.textContent = '▶️ Start Auto-Update';
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                }
+            }
+        }
+        
+        function startAutoUpdate() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            updateInterval = setInterval(fetchWeighbridge, 1000);
+        }
+        
+        // Start immediately
+        fetchWeighbridge();
+        startAutoUpdate();
+    </script>
+</body>
+</html>

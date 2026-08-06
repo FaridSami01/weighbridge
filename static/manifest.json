@@ -1,0 +1,27 @@
+{
+  "name": "Mill Weighbridge System - نظام الميزان",
+  "short_name": "Mill System",
+  "description": "مطاحن المهندس الحديثة - نظام الميزان",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3c72",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "ar"
+}
