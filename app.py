@@ -23,12 +23,11 @@ app.secret_key = os.environ.get("SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION_" + os.
 
 # DATABASE CONFIG - Matches YOUR schema
 DB_CONFIG = {
-    "host": os.environ.get("DB_HOST", "localhost"),
-    "user": os.environ.get("DB_USER", "root"),
-    "password": os.environ.get("DB_PASSWORD", "root"),
-    "database": os.environ.get("DB_NAME", "mill"),
-    "charset": "utf8mb4",
-    "use_unicode": True
+    'host': os.environ.get('MYSQLHOST', 'localhost'),
+    'user': os.environ.get('MYSQLUSER', 'root'),
+    'password': os.environ.get('MYSQLPASSWORD', 'root'),
+    'database': os.environ.get('MYSQLDATABASE', 'mill'),
+    'port': int(os.environ.get('MYSQLPORT', 3306))
 }
 
 @contextmanager
