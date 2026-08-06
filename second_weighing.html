@@ -1,0 +1,994 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* Second Weighing Form Styling */
+.weighing-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.weighbridge-display {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.weight-reading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.weight-value {
+    font-size: 72px;
+    font-weight: bold;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 10px rgba(0,255,0,0.5);
+    background: #000;
+    padding: 20px 40px;
+    border-radius: 10px;
+    border: 3px solid #00ff00;
+    min-width: 300px;
+}
+
+.weight-unit {
+    font-size: 48px;
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+}
+
+.status-online {
+    background: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+.status-offline {
+    background: #ff0000;
+    box-shadow: 0 0 10px #ff0000;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.weighbridge-title {
+    color: #fff;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.weighbridge-status {
+    color: #fff;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.weighing-form-container {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.form-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px 8px 0 0;
+    margin: -30px -30px 30px -30px;
+    text-align: center;
+}
+
+.form-header h2 {
+    margin: 0;
+    font-size: 28px;
+}
+
+/* Two-column layout like in photo */
+.form-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+/* Right column (blue background in photo) */
+.left-column {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+/* Left column (orange/peach background in photo) */
+.right-column {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 16px;
+    min-width: 140px;
+    text-align: right;
+    background: #fffacd;
+    padding: 8px 12px;
+    border-radius: 4px;
+}
+
+.form-group input,
+.form-group select {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #bdc3c7;
+    border-radius: 6px;
+    font-size: 16px;
+    background: #ffdab9;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.form-group input[readonly] {
+    background: #ffdab9;
+    cursor: not-allowed;
+    color: #2c3e50;
+    font-weight: bold;
+}
+
+.calculated-field {
+    background: #fff !important;
+    font-weight: bold;
+    color: #27ae60;
+    font-size: 18px;
+}
+
+.editable-field {
+    background: #ffdab9 !important;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    justify-content: center;
+    grid-column: 1 / -1;
+}
+
+.btn {
+    padding: 15px 40px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-capture {
+    background: #3498db;
+    color: white;
+}
+
+.btn-capture:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-save {
+    background: #27ae60;
+    color: white;
+}
+
+.btn-save:hover {
+    background: #229954;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-print {
+    background: #9b59b6;
+    color: white;
+}
+
+.btn-print:hover {
+    background: #8e44ad;
+}
+
+.btn-clear {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-clear:hover {
+    background: #c0392b;
+}
+
+.saved-entries {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #fff3cd;
+    border-radius: 6px;
+    border: 2px solid #ffc107;
+}
+
+.saved-entries select {
+    padding: 10px;
+    width: 100%;
+    border: 2px solid #3498db;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+.section-title {
+    background: #3498db;
+    color: white;
+    padding: 10px;
+    margin: -20px -20px 20px -20px;
+    border-radius: 8px 8px 0 0;
+    text-align: center;
+    font-weight: bold;
+}
+/* Print Styles */
+@media print {
+    /* Hide everything except print receipt */
+    .weighing-container,
+    .weighbridge-display,
+    .saved-entries,
+    .weighing-form-container,
+    .action-buttons {
+        display: none !important;
+    }
+    
+    /* Hide all body children except printReceipt */
+    body > *:not(#printReceipt) {
+        display: none !important;
+    }
+    
+    /* Show and style print receipt */
+    #printReceipt {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    /* Make all printReceipt children visible */
+    #printReceipt,
+    #printReceipt * {
+        visibility: visible !important;
+    }
+    
+    body {
+        background: white;
+        margin: 0;
+        padding: 0;
+    }
+    
+    @page {
+        size: A4;
+        margin: 10mm;
+    }
+}
+
+/* Print Receipt Layout - Hidden on screen, shown when printing */
+#printReceipt {
+    display: none; /* Hidden on screen */
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 20mm;
+    background: white;
+    font-family: Arial, sans-serif;
+}
+
+@media screen {
+    #printReceipt {
+        display: none !important; /* Force hidden on screen */
+    }
+}
+
+.print-header {
+    text-align: center;
+    border-bottom: 3px solid #000;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.print-header h1 {
+    margin: 0 0 5px 0;
+    font-size: 28px;
+    color: #000;
+}
+
+.print-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 20px;
+    color: #333;
+}
+
+.print-header p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.print-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.print-info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+}
+
+.print-info-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.print-info-value {
+    color: #000;
+    font-weight: 600;
+}
+
+.print-weights {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border: 2px solid #000;
+    border-radius: 8px;
+}
+
+.print-weight-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px dashed #ccc;
+    font-size: 16px;
+}
+
+.print-weight-row:last-child {
+    border-bottom: none;
+}
+
+.print-weight-label {
+    font-weight: bold;
+}
+
+.print-weight-value {
+    font-weight: 700;
+    color: #000;
+}
+
+.print-net-weight {
+    background: #000;
+    color: #fff;
+    padding: 15px;
+    margin-top: 10px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.print-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid #000;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    text-align: center;
+}
+
+.print-signature {
+    padding: 10px;
+}
+
+.print-signature-label {
+    font-weight: bold;
+    margin-bottom: 30px;
+    display: block;
+}
+
+.print-signature-line {
+    border-top: 1px solid #000;
+    margin-top: 40px;
+    padding-top: 5px;
+    font-size: 12px;
+    color: #666;
+}
+
+.print-datetime {
+    text-align: left;
+    font-size: 12px;
+    color: #666;
+    margin-top: 20px;
+}
+</style>
+
+<div class="weighing-container">
+    <h1 style="text-align: center; margin-bottom: 30px;">الوزنة الثانية / Second Weighing</h1>
+
+    <!-- Live Weighbridge Display -->
+    <div class="weighbridge-display">
+        <div class="weighbridge-title">
+            <span class="status-indicator" id="statusIndicator"></span>
+            {{ t.live_weighbridge }}
+        </div>
+        <div class="weight-reading">
+            <div class="weight-value" id="liveWeight">0</div>
+            <div class="weight-unit">{{ t.kg }}</div>
+        </div>
+        <div class="weighbridge-status" id="statusText">{{ t.offline }}</div>
+    </div>
+
+    <!-- Load First Weighing Data -->
+    <div class="saved-entries">
+        <label><strong>📋 تحميل الوزنة الأولى / Load First Weighing (Pending Only):</strong></label>
+        <select id="firstWeighingSelector" onchange="loadFirstWeighing()">
+            <option value="">-- اختر الوزنة الأولى المعلقة / Select Pending Weighing --</option>
+            <option value="session">📌 From Current Session (Latest)</option>
+            <optgroup label="━━━━━ الوزنات المعلقة / Pending Weighings ━━━━━">
+                {% for entry in recent_intakes %}
+                <option value="{{ entry.id }}" style="color: #e67e22; font-weight: bold;">
+                    ⏳ #{{ entry.id }} | {{ entry.date }} | 🚛 {{ entry.truck }}{% if entry.trailer_number %} + {{ entry.trailer_number }}{% endif %} | 👤 {{ entry.vendor_name }} | {{ entry.wheat_type }} | ⚖️ {{ entry.first_weight }} kg
+                </option>
+                {% endfor %}
+            </optgroup>
+        </select>
+        {% if not recent_intakes %}
+        <p style="color: #27ae60; margin-top: 10px; font-weight: bold;">
+            ✅ لا توجد وزنات معلقة / No pending weighings - All entries completed!
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- Second Weighing Form -->
+    <div class="weighing-form-container">
+        <div class="form-header">
+            <h2>{{ t.mill_name_ar }}</h2>
+            <p style="margin: 5px 0 0 0; font-size: 16px;">الوزنة الثانية / Second Weighing</p>
+        </div>
+
+        <form method="POST" id="secondWeighingForm">
+            <input type="hidden" name="intake_id" id="intake_id">
+
+            <div class="form-layout">
+                <!-- RIGHT COLUMN (Blue section in photo) -->
+                <div class="right-column">
+                    <div class="section-title">بيانات الوزن / Weight Data</div>
+
+                    <!-- رقم السيارة / Vehicle Number -->
+                    <div class="form-group">
+                        <label>رقم السيارة</label>
+                        <input type="text" name="truck" id="truck" readonly>
+                    </div>
+
+                    <!-- رقم المقطورة / Trailer Number -->
+                    <div class="form-group">
+                        <label>رقم المقطورة</label>
+                        <input type="text" name="trailer_number" id="trailer_number" readonly>
+                    </div>
+
+                    <!-- المحافظة / Governorate -->
+                    <div class="form-group">
+                        <label>المحافظة</label>
+                        <input type="text" name="governorate" id="governorate" readonly>
+                    </div>
+
+                    <!-- البحرية / Marine/Port -->
+                    <div class="form-group">
+                        <label>البحرية</label>
+                        <input type="text" name="marine" id="marine" readonly>
+                    </div>
+
+                    <!-- الحمولة / Load/Cargo -->
+                    <div class="form-group">
+                        <label>الحمولة</label>
+                        <input type="text" name="load_type" id="load_type" readonly>
+                    </div>
+
+                    <!-- اسم المشغل / Carrier -->
+                    <div class="form-group">
+                        <label>اسم المشغل</label>
+                        <input type="text" name="carrier_name" id="carrier_name" readonly>
+                    </div>
+
+                    <!-- السايق / Driver -->
+                    <div class="form-group">
+                        <label>السايق</label>
+                        <input type="text" name="driver" id="driver" readonly>
+                    </div>
+
+                    <!-- الوزنة الاولى / First Weight -->
+                    <div class="form-group">
+                        <label>الوزنة الاولى</label>
+                        <input type="number" name="first_weight" id="first_weight" readonly>
+                    </div>
+
+                    <!-- الوزنة الثانية / Second Weight -->
+                    <div class="form-group">
+                        <label>الوزنة الثانية</label>
+                        <input type="number" name="second_weight" id="second_weight" 
+                               class="calculated-field" readonly value="0">
+                    </div>
+
+                    <!-- الصافى / Net Weight -->
+                    <div class="form-group">
+                        <label>الصافى</label>
+                        <input type="number" name="net_weight_display" id="net_weight_display" 
+                               class="calculated-field" readonly value="0">
+                    </div>
+                </div>
+
+                <!-- LEFT COLUMN (Orange/Peach section in photo) -->
+                <div class="left-column">
+                    <div class="section-title">بيانات العميل / Client Data</div>
+
+                    <!-- اسم العميل / Client Name -->
+                    <div class="form-group">
+                        <label>اسم العميل</label>
+                        <input type="text" name="vendor_name" id="vendor_name" readonly>
+                    </div>
+
+                    <!-- النوعية / Type -->
+                    <div class="form-group">
+                        <label>النوعية</label>
+                        <input type="text" name="wheat_type" id="wheat_type" readonly>
+                    </div>
+
+                    <!-- عدد الاشوله / Number of Bags -->
+                    <div class="form-group">
+                        <label>عدد الاشوله</label>
+                        <input type="number" name="num_bags" id="num_bags" 
+                               class="editable-field" value="0" 
+                               oninput="calculateWeights()">
+                    </div>
+
+                    <!-- وزن الشوال / Weight per Bag -->
+                    <div class="form-group">
+                        <label>وزن الشوال</label>
+                        <input type="number" name="bag_weight" id="bag_weight" 
+                               class="editable-field" value="0" 
+                               oninput="calculateWeights()">
+                    </div>
+
+                    <!-- اجمالي الوزن / Total Weight (First - Second) -->
+                    <div class="form-group">
+                        <label>اجمالي الوزن</label>
+                        <input type="number" name="total_weight" id="total_weight" 
+                               class="calculated-field" readonly value="0">
+                    </div>
+
+                    <!-- كود الوزن / Code Weight (Bags × Bag Weight) -->
+                    <div class="form-group">
+                        <label>كود الوزن</label>
+                        <input type="number" name="code_weight" id="code_weight" 
+                               class="calculated-field" readonly value="0">
+                    </div>
+
+                    <!-- كود / Difference (|Code Weight - Total Weight|) -->
+                    <div class="form-group">
+                        <label>كود</label>
+                        <input type="number" name="difference" id="difference" 
+                               class="calculated-field" readonly value="0">
+                    </div>
+
+                    <!-- اسم المستلم / Receiver Name -->
+                    <div class="form-group">
+                        <label>اسم المستلم</label>
+                        <input type="text" name="receiver_name" id="receiver_name" 
+                               class="editable-field" value="1">
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button type="button" class="btn btn-capture" onclick="captureSecondWeight()">
+                        ⚖️ التقاط الوزن / Capture Weight
+                    </button>
+                    <button type="submit" class="btn btn-save">
+                        💾 حفظ / Save
+                    </button>
+                    <button type="button" class="btn btn-print" onclick="printReceipt()">
+                        🖨️ طباعة / Print
+                    </button>
+                    <button type="button" class="btn btn-clear" onclick="clearForm()">
+                        🗑️ مسح / Clear
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+</div>
+
+<!-- Print Receipt (Hidden, only visible when printing) -->
+
+
+<!-- Print Receipt - Hidden on screen, visible only when printing -->
+<div id="printReceipt">
+    <div style="max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; direction: rtl;">
+        <!-- Header -->
+        <div style="text-align: center; border-bottom: 3px solid #000; padding-bottom: 20px; margin-bottom: 30px;">
+            <h1 style="margin: 0 0 10px 0; font-size: 28px;">مطاحن المهندس الحديثة</h1>
+            <h2 style="margin: 0 0 10px 0; font-size: 22px;">Modern Engineer Mills</h2>
+            <p style="margin: 0; font-size: 16px;">إيصال الوزن / Weighing Receipt</p>
+            <p style="margin: 10px 0 0 0; font-weight: bold;">رقم: <span id="print_receipt_id"></span></p>
+        </div>
+
+        <!-- Client Information -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <tr style="background: #f5f5f5;">
+                <td colspan="2" style="padding: 10px; font-size: 18px; font-weight: bold; border: 1px solid #000;">
+                    بيانات العميل
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd; width: 40%;">اسم العميل:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_vendor_name"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">رقم السيارة:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_truck_number"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">رقم المقطورة:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_trailer_number"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">المحافظة:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_governorate"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">الحمولة:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_load_type"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">عدد الأشولة:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_num_bags"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">وزن الشوال:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_bag_weight"></td>
+            </tr>
+        </table>
+
+        <!-- Weight Information -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <tr style="background: #f5f5f5;">
+                <td colspan="2" style="padding: 10px; font-size: 18px; font-weight: bold; border: 1px solid #000;">
+                    تفاصيل الوزن
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd; width: 40%;">الوزنة الأولى:</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 16px; font-weight: bold;" id="print_first_weight"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">التاريخ والوقت:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_first_datetime"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">الوزنة الثانية:</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 16px; font-weight: bold;" id="print_second_weight"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">التاريخ والوقت:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;" id="print_second_datetime"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">اجمالي الوزن:</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 16px; font-weight: bold;" id="print_total_weight"></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">كود الوزن:</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 16px; font-weight: bold;" id="print_code_weight"></td>
+            </tr>
+            <tr style="background: #e3f2fd;">
+                <td style="padding: 15px; font-size: 18px; font-weight: bold; border: 2px solid #000;">الصافي:</td>
+                <td style="padding: 15px; font-size: 20px; font-weight: bold; border: 2px solid #000;" id="print_net_weight"></td>
+            </tr>
+        </table>
+
+        <!-- Signatures -->
+        <table style="width: 100%; margin-top: 50px;">
+            <tr>
+                <td style="text-align: center; width: 33%;">
+                    <div style="margin-bottom: 50px; font-weight: bold;">موظف الاستلام</div>
+                    <div style="border-top: 1px solid #000; padding-top: 5px;">التوقيع</div>
+                </td>
+                <td style="text-align: center; width: 33%;">
+                    <div style="margin-bottom: 50px; font-weight: bold;">المستلم</div>
+                    <div style="border-top: 1px solid #000; padding-top: 5px;" id="print_receiver"></div>
+                </td>
+                <td style="text-align: center; width: 33%;">
+                    <div style="margin-bottom: 50px; font-weight: bold;">الختم الرسمي</div>
+                    <div style="border: 1px solid #000; height: 50px; width: 80px; margin: 0 auto;"></div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Footer -->
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666;">
+            طبع في: <span id="print_datetime"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentWeight = 0;
+let isOnline = false;
+
+// Fetch live weight every second
+function updateWeight() {
+    fetch("/api/weighbridge")
+        .then(r => r.json())
+        .then(data => {
+            currentWeight = data.weight;
+            isOnline = data.online;
+            
+            document.getElementById("liveWeight").innerText = currentWeight;
+            
+            const indicator = document.getElementById("statusIndicator");
+            const statusText = document.getElementById("statusText");
+            
+            if (isOnline) {
+                indicator.className = "status-indicator status-online";
+                statusText.innerText = "{{ t.online }}";
+            } else {
+                indicator.className = "status-indicator status-offline";
+                statusText.innerText = "{{ t.offline }}";
+            }
+        })
+        .catch(err => console.error("Weighbridge error:", err));
+}
+
+// Capture second weight
+function captureSecondWeight() {
+    if (currentWeight > 0) {
+        document.getElementById("second_weight").value = currentWeight;
+        calculateWeights();
+        
+        const captureBtn = event.target;
+        const originalText = captureBtn.innerText;
+        captureBtn.innerText = "✅ تم الالتقاط / Captured!";
+        captureBtn.style.background = "#27ae60";
+        
+        setTimeout(() => {
+            captureBtn.innerText = originalText;
+            captureBtn.style.background = "";
+        }, 2000);
+    } else {
+        alert("لا يوجد وزن! ضع السيارة على الميزان.\nNo weight detected! Place vehicle on scale.");
+    }
+}
+
+// Calculate all weights
+function calculateWeights() {
+    // Get values
+    const firstWeight = parseFloat(document.getElementById("first_weight").value) || 0;
+    const secondWeight = parseFloat(document.getElementById("second_weight").value) || 0;
+    const numBags = parseFloat(document.getElementById("num_bags").value) || 0;
+    const bagWeight = parseFloat(document.getElementById("bag_weight").value) || 0;
+    
+    // Calculate كود الوزن (Code Weight) = |First Weight - Second Weight|
+    const codeWeight = Math.abs(firstWeight - secondWeight);
+    document.getElementById("code_weight").value = codeWeight;
+    
+    // Calculate الصافي (Net Weight) = Same as كود الوزن
+    document.getElementById("net_weight_display").value = codeWeight;
+    
+    // Calculate اجمالي الوزن (Total Weight) = Number of Bags × Weight per Bag
+    const totalWeight = numBags * bagWeight;
+    document.getElementById("total_weight").value = totalWeight;
+    
+    // Calculate كود (Difference) = |Code Weight - Total Weight|
+    const difference = Math.abs(codeWeight - totalWeight);
+    document.getElementById("difference").value = difference;
+}
+
+// Load first weighing data
+function loadFirstWeighing() {
+    const selector = document.getElementById("firstWeighingSelector").value;
+    
+    if (selector === 'session') {
+        // Load from sessionStorage
+        const saved = sessionStorage.getItem('first_weighing_data');
+        if (saved) {
+            const data = JSON.parse(saved);
+            fillFormWithData(data);
+            alert("✅ تم تحميل البيانات!\nFirst weighing data loaded!");
+        } else {
+            alert("لا توجد بيانات محفوظة. يرجى إكمال الوزنة الأولى أولاً.\nNo session data found.");
+        }
+    } else if (selector) {
+        // Load from database
+        fetch(`/api/intake/${selector}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    fillFormWithData(data.intake);
+                    document.getElementById("intake_id").value = selector;
+                    alert("✅ تم تحميل البيانات!\nData loaded successfully!");
+                } else {
+                    alert("خطأ في تحميل البيانات\nError loading data: " + data.error);
+                }
+            })
+            .catch(err => {
+                alert("خطأ\nError: " + err);
+            });
+    }
+}
+
+// Fill form with first weighing data
+function fillFormWithData(data) {
+    document.getElementById("vendor_name").value = data.vendor_name || '';
+    document.getElementById("wheat_type").value = data.wheat_type || '';
+    document.getElementById("carrier_name").value = data.carrier_name || '';
+    document.getElementById("truck").value = data.truck || '';
+    document.getElementById("trailer_number").value = data.trailer_number || '';
+    document.getElementById("governorate").value = data.governorate || '';
+    document.getElementById("driver").value = data.driver || '';
+    document.getElementById("marine").value = data.marine || '';
+    document.getElementById("load_type").value = data.load_type || '';
+    document.getElementById("first_weight").value = data.first_weight || data.gross || 0;
+    
+    // Store first weighing datetime for print receipt
+    if (data.captured_at) {
+        const date = new Date(data.captured_at);
+        const dateStr = date.toLocaleDateString('ar-EG', {day: '2-digit', month: '2-digit', year: 'numeric'}) + 
+                       ' ' + date.toLocaleTimeString('ar-EG', {hour: '2-digit', minute: '2-digit'});
+        
+        // Create hidden field if it doesn't exist
+        let hiddenField = document.getElementById('first_datetime_hidden');
+        if (!hiddenField) {
+            hiddenField = document.createElement('input');
+            hiddenField.type = 'hidden';
+            hiddenField.id = 'first_datetime_hidden';
+            document.getElementById('secondWeighingForm').appendChild(hiddenField);
+        }
+        hiddenField.value = dateStr;
+    }
+    
+    calculateWeights();
+}
+
+// Print Receipt with actual Arabic text
+function printReceipt() {
+    // Get current form values
+    const intakeId = document.getElementById('intake_id')?.value || '';
+    const vendorName = document.getElementById('vendor_name')?.value || '';
+    const truckNumber = document.getElementById('truck')?.value || '';
+    const trailerNumber = document.getElementById('trailer_number')?.value || '';
+    const governorate = document.getElementById('governorate')?.value || '';
+    const loadType = document.getElementById('load_type')?.value || '';
+    const numBags = document.getElementById('num_bags')?.value || '0';
+    const bagWeight = document.getElementById('bag_weight')?.value || '0';
+    const firstWeight = document.getElementById('first_weight')?.value || '0';
+    const secondWeight = document.getElementById('second_weight')?.value || '0';
+    const totalWeight = document.getElementById('total_weight')?.value || '0';
+    const codeWeight = document.getElementById('code_weight')?.value || '0';
+    const netWeight = document.getElementById('net_weight_display')?.value || '0';
+    const receiverName = document.getElementById('receiver_name')?.value || '';
+    
+    // Get first weighing date from hidden field (if available)
+    const firstDateTime = document.getElementById('first_datetime_hidden')?.value;
+    
+    // Populate print receipt
+    document.getElementById('print_receipt_id').textContent = intakeId || '-';
+    document.getElementById('print_vendor_name').textContent = vendorName || '-';
+    document.getElementById('print_truck_number').textContent = truckNumber || '-';
+    document.getElementById('print_trailer_number').textContent = trailerNumber || '-';
+    document.getElementById('print_governorate').textContent = governorate || '-';
+    document.getElementById('print_load_type').textContent = loadType || '-';
+    document.getElementById('print_num_bags').textContent = numBags || '0';
+    document.getElementById('print_bag_weight').textContent = (bagWeight || '0') + ' كجم';
+    
+    // Weight details
+    document.getElementById('print_first_weight').textContent = (firstWeight || '0') + ' كجم';
+    document.getElementById('print_second_weight').textContent = (secondWeight || '0') + ' كجم';
+    document.getElementById('print_total_weight').textContent = (totalWeight || '0') + ' كجم';
+    document.getElementById('print_code_weight').textContent = (codeWeight || '0') + ' كجم';
+    document.getElementById('print_net_weight').textContent = (netWeight || '0') + ' كجم';
+    
+    // Receiver
+    document.getElementById('print_receiver').textContent = receiverName || 'التوقيع';
+    
+    // Date/Time
+    const now = new Date();
+    const dateTimeStr = now.toLocaleDateString('ar-EG', {day: '2-digit', month: '2-digit', year: 'numeric'}) + 
+                       ' ' + now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute: '2-digit'});
+    
+    // First weighing date/time (if available from loaded data)
+    if (firstDateTime) {
+        document.getElementById('print_first_datetime').textContent = firstDateTime;
+    } else {
+        document.getElementById('print_first_datetime').textContent = 'التاريخ والوقت غير متاح';
+    }
+    
+    // Second weighing is now
+    document.getElementById('print_second_datetime').textContent = dateTimeStr;
+    document.getElementById('print_datetime').textContent = dateTimeStr;
+    
+    // Trigger print
+    window.print();
+}
+
+// Clear form
+function clearForm() {
+    if (confirm("مسح جميع الحقول؟\nClear all fields?")) {
+        document.getElementById("secondWeighingForm").reset();
+        document.getElementById("second_weight").value = "0";
+        document.getElementById("total_weight").value = "0";
+        document.getElementById("code_weight").value = "0";
+        document.getElementById("difference").value = "0";
+        document.getElementById("net_weight_display").value = "0";
+    }
+}
+
+// Auto-save before submit
+document.getElementById("secondWeighingForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    
+    // Note: Allowing zero weight for testing/special cases
+    // In production, you may want to warn but still allow saving
+    if (parseFloat(document.getElementById("second_weight").value) < 0) {
+        alert("الوزن لا يمكن أن يكون سالب!\nWeight cannot be negative!");
+        return false;
+    }
+    
+    // Submit form
+    this.submit();
+});
+
+// Update weight every second
+setInterval(updateWeight, 1000);
+updateWeight();
+
+// Auto-load from session on page load
+window.addEventListener('load', function() {
+    const saved = sessionStorage.getItem('first_weighing_data');
+    if (saved) {
+        document.getElementById("firstWeighingSelector").value = 'session';
+        loadFirstWeighing();
+    }
+});
+</script>
+
+{% endblock %}
