@@ -7,133 +7,333 @@
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#1e3c72">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Mill System">
     <link rel="apple-touch-icon" href="/static/icon-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/static/icon-512.png">
 
-    <!-- MUST MATCH YOUR CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    
+
     <style>
-    /* RTL (Arabic) - content margin on right side */
-    html[dir="rtl"] .main {
-        margin-right: 250px !important;
-        margin-left: 0 !important;
-    }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* LTR (English) - content margin on left side */
-    html[dir="ltr"] .main {
-        margin-left: 250px !important;
-        margin-right: 0 !important;
-    }
+        body {
+            overflow-x: hidden;
+            font-family: Arial, sans-serif;
+        }
 
-    /* Sidebar positioning for RTL */
-    html[dir="rtl"] .sidebar {
-        right: 0 !important;
-        left: auto !important;
-    }
+        /* ── SIDEBAR ── */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            width: 250px;
+            background: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%);
+            z-index: 1000;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
 
-    /* Sidebar positioning for LTR */
-    html[dir="ltr"] .sidebar {
-        left: 0 !important;
-        right: auto !important;
-    }
+        /* RTL: sidebar on right */
+        html[dir="rtl"] .sidebar { right: 0; left: auto; }
+        html[dir="ltr"] .sidebar { left: 0; right: auto; }
 
-    /* Prevent horizontal scrolling */
-    body {
-        overflow-x: hidden;
-    }
+        /* Sidebar hidden state */
+        html[dir="rtl"] .sidebar.closed { transform: translateX(100%); }
+        html[dir="ltr"] .sidebar.closed { transform: translateX(-100%); }
+
+        .sidebar .brand-title {
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 20px 15px 5px;
+            text-align: center;
+        }
+
+        .sidebar .brand-sub {
+            color: rgba(255,255,255,0.7);
+            font-size: 13px;
+            padding: 0 15px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .sidebar .nav { padding: 10px 0; }
+
+        .sidebar .nav a {
+            display: block;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            transition: all 0.2s;
+            border-right: 3px solid transparent;
+        }
+
+        html[dir="ltr"] .sidebar .nav a {
+            border-right: none;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar .nav a:hover,
+        .sidebar .nav a.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-color: #f093fb;
+        }
+
+        .nav-divider {
+            border-top: 1px solid rgba(255,255,255,0.15);
+            margin: 8px 0;
+        }
+
+        .nav-logout {
+            color: #fca5a5 !important;
+        }
+
+        .nav-admin {
+            color: #fbbf24 !important;
+        }
+
+        /* ── TOGGLE BUTTON ── */
+        .sidebar-toggle {
+            position: fixed;
+            top: 12px;
+            z-index: 1100;
+            background: #1e3c72;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 42px;
+            height: 42px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        html[dir="rtl"] .sidebar-toggle { right: 260px; }
+        html[dir="ltr"] .sidebar-toggle { left: 260px; }
+
+        html[dir="rtl"] .sidebar-toggle.sidebar-closed { right: 10px; }
+        html[dir="ltr"] .sidebar-toggle.sidebar-closed { left: 10px; }
+
+        /* ── OVERLAY (mobile) ── */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        .sidebar-overlay.active { display: block; }
+
+        /* ── MAIN CONTENT ── */
+        .main {
+            transition: margin 0.3s ease;
+            min-height: 100vh;
+            background: #f8fafc;
+        }
+
+        html[dir="rtl"] .main { margin-right: 250px; margin-left: 0; }
+        html[dir="ltr"] .main { margin-left: 250px; margin-right: 0; }
+
+        html[dir="rtl"] .main.expanded { margin-right: 0; }
+        html[dir="ltr"] .main.expanded { margin-left: 0; }
+
+        .content {
+            padding: 20px;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+
+            html[dir="rtl"] .sidebar { transform: translateX(100%); }
+            html[dir="ltr"] .sidebar { transform: translateX(-100%); }
+
+            html[dir="rtl"] .sidebar.open { transform: translateX(0); }
+            html[dir="ltr"] .sidebar.open { transform: translateX(0); }
+
+            html[dir="rtl"] .sidebar-toggle { right: 10px !important; }
+            html[dir="ltr"] .sidebar-toggle { left: 10px !important; }
+
+            .main { margin: 0 !important; }
+
+            .content { padding: 15px 10px; }
+        }
+
+        /* ── ALERTS ── */
+        .alert {
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .alert-success { background: #dcfce7; color: #166534; }
+        .alert-danger  { background: #fee2e2; color: #991b1b; }
+        .alert-warning { background: #fef3c7; color: #92400e; }
+        .alert-info    { background: #dbeafe; color: #1e40af; }
+
+        /* Make tables scroll horizontally on small screens */
+        .table-container, table {
+            max-width: 100%;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
 
-<div class="app">
+<!-- Overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-        <div class="brand-title">{{ t.mill_name }}</div>
-        <div class="brand-sub">{{ t.mill_name_ar }}</div>
+<!-- Toggle Button -->
+<button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle Menu">
+    ☰
+</button>
 
-        <div class="nav">
-            {% if session.get("role") == "OPERATOR" %}
-                <!-- WEIGHBRIDGE OPERATOR MENU (LIMITED) -->
-                <a href="/weighbridge_dashboard">⚖️ Weighbridge</a>
-                <a href="/intake">{{ t.wheat_intake }}</a>
-                <a href="/second_weighing">⚖️ الوزنة الثانية</a>
-                <a href="/intake/history">{{ t.intake_history }}</a>
-                <a href="/vendors">{{ t.vendors }}</a>
-            {% else %}
-                <!-- ADMIN/FULL ACCESS MENU -->
-                <a href="/dashboard">{{ t.dashboard }}</a>
-                <a href="/intake">{{ t.wheat_intake }}</a>
-                <a href="/second_weighing">⚖️ الوزنة الثانية / Second Weighing</a>
-                <a href="/intake/history">{{ t.intake_history }}</a>
-                <a href="/conditioning">{{ t.conditioning }}</a>
-                <a href="/conditioning/history">{{ t.conditioning_history }}</a>
-                <a href="/vendors">{{ t.vendors }}</a>
-                <a href="/packing">{{ t.packing }}</a>
-                <a href="/accounting">{{ t.accounting }}</a>
-                <a href="/stock">{{ t.stock }}</a>
-                <a href="/reports">{{ t.reports }}</a>
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+    <div class="brand-title">{{ t.mill_name }}</div>
+    <div class="brand-sub">{{ t.mill_name_ar }}</div>
 
-                <div class="nav-divider"></div>
+    <div class="nav">
+        {% if session.get("role") == "OPERATOR" %}
+            <a href="/weighbridge_dashboard">⚖️ Weighbridge</a>
+            <a href="/intake">{{ t.wheat_intake }}</a>
+            <a href="/second_weighing">⚖️ الوزنة الثانية</a>
+            <a href="/intake/history">{{ t.intake_history }}</a>
+            <a href="/vendors">{{ t.vendors }}</a>
+        {% else %}
+            <a href="/dashboard">{{ t.dashboard }}</a>
+            <a href="/intake">{{ t.wheat_intake }}</a>
+            <a href="/second_weighing">⚖️ الوزنة الثانية</a>
+            <a href="/intake/history">{{ t.intake_history }}</a>
+            <a href="/conditioning">{{ t.conditioning }}</a>
+            <a href="/conditioning/history">{{ t.conditioning_history }}</a>
+            <a href="/vendors">{{ t.vendors }}</a>
+            <a href="/packing">{{ t.packing }}</a>
+            <a href="/accounting">{{ t.accounting }}</a>
+            <a href="/stock">{{ t.stock }}</a>
+            <a href="/reports">{{ t.reports }}</a>
 
-                {% if session.get("role") == "ADMIN" %}
-                <a href="/admin" class="nav-admin">{{ t.admin }}</a>
-                {% endif %}
+            <div class="nav-divider"></div>
+
+            {% if session.get("role") == "ADMIN" %}
+            <a href="/admin" class="nav-admin">{{ t.admin }}</a>
             {% endif %}
+        {% endif %}
 
-            <div class="nav-divider"></div>
-
-            <a href="/lang/en">EN</a>
-            <a href="/lang/ar">ع</a>
-
-            <div class="nav-divider"></div>
-
-            <a href="/logout" class="nav-logout">{{ t.logout }}</a>
-        </div>
+        <div class="nav-divider"></div>
+        <a href="/lang/en">🌐 EN</a>
+        <a href="/lang/ar">🌐 ع</a>
+        <div class="nav-divider"></div>
+        <a href="/logout" class="nav-logout">🚪 {{ t.logout }}</a>
     </div>
-
-    <!-- MAIN -->
-    <div class="main">
-        <div class="content">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}" style="padding: 15px; margin-bottom: 20px; border-radius: 8px; background: {% if category == 'danger' %}#fee2e2{% elif category == 'warning' %}#fef3c7{% else %}#dcfce7{% endif %}; color: {% if category == 'danger' %}#991b1b{% elif category == 'warning' %}#92400e{% else %}#166534{% endif %};">
-                        {{ message }}
-                    </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            {% block content %}{% endblock %}
-        </div>
-    </div>
-
 </div>
 
-<!-- Install App Button (only shows when app can be installed) -->
-<button id="installButton" style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 15px 25px; background: #1e3c72; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-size: 14px; font-weight: bold; z-index: 10000;">
+<!-- MAIN -->
+<div class="main" id="mainContent">
+    <div class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<!-- Install App Button -->
+<button id="installButton" style="display:none; position:fixed; bottom:20px; right:20px; padding:12px 20px; background:#1e3c72; color:white; border:none; border-radius:8px; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.2); font-size:13px; font-weight:bold; z-index:10000;">
     📱 تثبيت التطبيق<br><small>Install App</small>
 </button>
 
-<!-- PWA Service Worker -->
 <script>
-// Register Service Worker
+// ── SIDEBAR TOGGLE ──
+const sidebar = document.getElementById('sidebar');
+const mainContent = document.getElementById('mainContent');
+const toggleBtn = document.getElementById('sidebarToggle');
+const overlay = document.getElementById('sidebarOverlay');
+const isRTL = document.documentElement.dir === 'rtl';
+const isMobile = window.innerWidth <= 768;
+
+// Load saved state
+let sidebarOpen = localStorage.getItem('sidebarOpen') !== 'false';
+
+function applySidebarState() {
+    if (isMobile) {
+        // Mobile: overlay mode
+        if (sidebarOpen) {
+            sidebar.classList.add('open');
+            sidebar.classList.remove('closed');
+            overlay.classList.add('active');
+        } else {
+            sidebar.classList.remove('open');
+            sidebar.classList.add('closed');
+            overlay.classList.remove('active');
+        }
+        mainContent.classList.remove('expanded');
+        toggleBtn.classList.remove('sidebar-closed');
+    } else {
+        // Desktop: push mode
+        if (sidebarOpen) {
+            sidebar.classList.remove('closed');
+            mainContent.classList.remove('expanded');
+            toggleBtn.classList.remove('sidebar-closed');
+        } else {
+            sidebar.classList.add('closed');
+            mainContent.classList.add('expanded');
+            toggleBtn.classList.add('sidebar-closed');
+        }
+        overlay.classList.remove('active');
+    }
+
+    toggleBtn.textContent = sidebarOpen ? '✕' : '☰';
+}
+
+function toggleSidebar() {
+    sidebarOpen = !sidebarOpen;
+    localStorage.setItem('sidebarOpen', sidebarOpen);
+    applySidebarState();
+}
+
+function closeSidebar() {
+    sidebarOpen = false;
+    localStorage.setItem('sidebarOpen', sidebarOpen);
+    applySidebarState();
+}
+
+// Initialize
+applySidebarState();
+
+// Highlight active link
+const currentPath = window.location.pathname;
+document.querySelectorAll('.sidebar .nav a').forEach(link => {
+    if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+    }
+});
+
+// ── PWA SERVICE WORKER ──
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/static/sw.js')
-            .then(registration => {
-                console.log('✅ Service Worker registered');
-                
-                // Check for updates
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
+            .then(reg => {
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
                     newWorker.addEventListener('statechange', () => {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                             if (confirm('تحديث جديد متاح!\nNew update available! Reload?')) {
@@ -144,11 +344,11 @@ if ('serviceWorker' in navigator) {
                     });
                 });
             })
-            .catch(err => console.log('Service Worker failed:', err));
+            .catch(err => console.log('SW failed:', err));
     });
 }
 
-// Install App Prompt
+// ── PWA INSTALL PROMPT ──
 let deferredPrompt;
 const installButton = document.getElementById('installButton');
 
@@ -156,29 +356,20 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
     installButton.style.display = 'block';
-    console.log('💡 App can be installed');
 });
 
 installButton.addEventListener('click', async () => {
     if (!deferredPrompt) return;
-    
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-        console.log('✅ App installed');
-    }
-    
     deferredPrompt = null;
     installButton.style.display = 'none';
 });
 
 window.addEventListener('appinstalled', () => {
-    console.log('✅ App installed');
     installButton.style.display = 'none';
 });
 
-// Hide install button if already installed
 if (window.matchMedia('(display-mode: standalone)').matches) {
     installButton.style.display = 'none';
 }
