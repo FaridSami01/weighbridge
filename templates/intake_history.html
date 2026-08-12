@@ -573,7 +573,7 @@
                             <input type="checkbox" class="row-checkbox" value="{{ r.id }}" onchange="updateBulkDeleteButton()">
                         </td>
                         {% endif %}
-                        <td>{{ r.id }}</td>
+                        <td>{{ loop.index }}</td>
                         <td>{{ r.captured_at.strftime('%Y-%m-%d %H:%M') if r.captured_at else '-' }}</td>
                         <td>{{ r.vendor_name or '-' }}</td>
                         <td>{{ r.truck_number or '-' }}</td>
