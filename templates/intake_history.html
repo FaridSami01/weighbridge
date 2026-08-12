@@ -156,7 +156,8 @@
     background: white;
     border-radius: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    overflow: hidden;
+    overflow-x: auto;  /* Changed from 'hidden' to 'auto' for horizontal scroll */
+    overflow-y: visible;
 }
 
 .table-header {
@@ -273,6 +274,42 @@
 
 .action-btn-delete:hover {
     background: #dc2626;
+}
+
+.action-btn-print {
+    background: #8b5cf6;
+    color: white;
+}
+
+.action-btn-print:hover {
+    background: #7c3aed;
+}
+
+/* Checkbox Styling */
+.row-checkbox, #selectAll {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #667eea;
+}
+
+.row-checkbox:hover, #selectAll:hover {
+    transform: scale(1.1);
+}
+
+/* Bulk Delete Button */
+#bulkDeleteBtn {
+    animation: pulse 2s infinite;
+}
+
+#bulkDeleteBtn:hover {
+    background: #dc2626 !important;
+    transform: scale(1.05);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
 }
 
 /* Pagination */
@@ -482,7 +519,15 @@
             <div class="table-title">
                 📑 السجلات / Records (<span id="filteredCount">{{ records|length }}</span>)
             </div>
-            <div class="table-actions">
+            <div class="table-actions" style="display: flex; gap: 10px; align-items: center;">
+                {% if session.get('role') == 'ADMIN' %}
+                <button id="bulkDeleteBtn" 
+                        onclick="bulkDeleteRecords()" 
+                        style="display: none; background: #ef4444; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;"
+                        title="حذف المحدد / Delete Selected">
+                    🗑️ حذف المحدد (<span id="selectedCount">0</span>)
+                </button>
+                {% endif %}
                 <select id="rowsPerPage" onchange="changeRowsPerPage()">
                     <option value="10">10 صفوف</option>
                     <option value="25" selected>25 صفوف</option>
@@ -496,6 +541,11 @@
         <table class="modern-table" id="recordsTable">
             <thead>
                 <tr>
+                    {% if session.get('role') == 'ADMIN' %}
+                    <th style="width: 40px;">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" title="تحديد الكل / Select All">
+                    </th>
+                    {% endif %}
                     <th>#</th>
                     <th>التاريخ / Date</th>
                     <th>العميل / Vendor</th>
@@ -518,7 +568,12 @@
                         data-status="{{ 'completed' if r.second_weight and r.second_weight > 0 else 'pending' }}"
                         data-date="{{ r.captured_at.strftime('%Y-%m-%d') if r.captured_at else '' }}"
                         data-search="{{ r.truck_number or '' }} {{ r.driver_name or '' }} {{ r.governorate or '' }}">
-                        <td>{{ r.id }}</td>
+                        {% if session.get('role') == 'ADMIN' %}
+                        <td>
+                            <input type="checkbox" class="row-checkbox" value="{{ r.id }}" onchange="updateBulkDeleteButton()">
+                        </td>
+                        {% endif %}
+                        <td>{{ loop.index }}</td>
                         <td>{{ r.captured_at.strftime('%Y-%m-%d %H:%M') if r.captured_at else '-' }}</td>
                         <td>{{ r.vendor_name or '-' }}</td>
                         <td>{{ r.truck_number or '-' }}</td>
@@ -541,6 +596,14 @@
                             {% if not r.second_weight or r.second_weight == 0 %}
                             <button class="action-btn action-btn-edit" onclick="completeWeighing({{ r.id }})">
                                 ⚖️ إكمال
+                            </button>
+                            {% endif %}
+                            <button class="action-btn action-btn-print" onclick="printIntakeReceipt({{ r.id }})">
+                                🖨️ طباعة
+                            </button>
+                            {% if session.get('role') == 'ADMIN' %}
+                            <button class="action-btn action-btn-delete" onclick="deleteRecord({{ r.id }})">
+                                🗑️ حذف
                             </button>
                             {% endif %}
                         </td>
@@ -705,6 +768,234 @@ function viewRecord(id) {
 function completeWeighing(id) {
     // Load entry in second weighing page
     window.location.href = `/second_weighing?load=${id}`;
+}
+
+// Delete Record (Admin only)
+function deleteRecord(id) {
+    if (!confirm('هل أنت متأكد من حذف هذا السجل؟\nAre you sure you want to delete this record?\n\nThis action cannot be undone!')) {
+        return;
+    }
+    
+    fetch(`/api/intake/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('تم حذف السجل بنجاح!\nRecord deleted successfully!');
+            location.reload();
+        } else {
+            alert('فشل حذف السجل: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Delete error:', error);
+        alert('خطأ في الحذف: ' + error);
+    });
+}
+
+// Bulk Delete Functions
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateBulkDeleteButton();
+}
+
+function updateBulkDeleteButton() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (checkboxes.length > 0) {
+        bulkDeleteBtn.style.display = 'block';
+        selectedCount.textContent = checkboxes.length;
+    } else {
+        bulkDeleteBtn.style.display = 'none';
+    }
+    
+    // Update "select all" checkbox state
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+    }
+}
+
+function bulkDeleteRecords() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+        alert('الرجاء تحديد سجلات للحذف\nPlease select records to delete');
+        return;
+    }
+    
+    const confirmMsg = `هل أنت متأكد من حذف ${ids.length} سجل؟\nAre you sure you want to delete ${ids.length} record(s)?\n\nThis action cannot be undone!`;
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    // Show progress
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const originalText = bulkDeleteBtn.innerHTML;
+    bulkDeleteBtn.innerHTML = '⏳ جاري الحذف...';
+    bulkDeleteBtn.disabled = true;
+    
+    // Delete records one by one
+    let deleted = 0;
+    let failed = 0;
+    
+    Promise.all(ids.map(id => 
+        fetch(`/api/intake/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                deleted++;
+            } else {
+                failed++;
+            }
+        })
+        .catch(() => failed++)
+    ))
+    .then(() => {
+        if (failed === 0) {
+            alert(`✅ تم حذف ${deleted} سجل بنجاح!\nSuccessfully deleted ${deleted} record(s)!`);
+        } else {
+            alert(`⚠️ تم حذف ${deleted} سجل\nفشل حذف ${failed} سجل\n\nDeleted: ${deleted}\nFailed: ${failed}`);
+        }
+        location.reload();
+    })
+    .catch(error => {
+        console.error('Bulk delete error:', error);
+        alert('خطأ في الحذف الجماعي: ' + error);
+        bulkDeleteBtn.innerHTML = originalText;
+        bulkDeleteBtn.disabled = false;
+    });
+}
+
+// Print Receipt from History
+function printIntakeReceipt(id) {
+    fetch(`/api/intake/${id}/receipt`)
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) {
+            alert('خطأ في تحميل البيانات: ' + (res.error || 'Unknown error'));
+            return;
+        }
+        
+        const d = res.data;
+        
+        // Calculate total weight
+        const numBags = parseFloat(d.num_bags) || 0;
+        const bagWeight = parseFloat(d.bag_weight) || 0;
+        const totalWeight = numBags * bagWeight;
+        const codeWeight = parseFloat(d.code_weight) || 0;
+        const netWeight = parseFloat(d.net_weight) || codeWeight;
+        const firstWeight = parseFloat(d.first_weight) || 0;
+        const secondWeight = parseFloat(d.second_weight) || 0;
+        
+        // Open print window
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        printWindow.document.write(`
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>إيصال الوزن - ${d.id}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; direction: rtl; }
+        .header { text-align: center; border-bottom: 3px solid #1e3c72; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { margin: 0 0 5px 0; font-size: 26px; color: #1e3c72; }
+        .header h2 { margin: 0 0 5px 0; font-size: 18px; color: #555; }
+        .header p { margin: 5px 0; font-size: 14px; }
+        .receipt-num { font-size: 16px; font-weight: bold; color: #1e3c72; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background: #1e3c72; color: white; padding: 10px; text-align: right; font-size: 14px; }
+        td { padding: 9px 10px; border: 1px solid #ddd; font-size: 13px; }
+        td:first-child { background: #f8fafc; font-weight: bold; width: 40%; }
+        .net-row td { background: #e3f2fd !important; font-size: 16px; font-weight: bold; border: 2px solid #1e3c72; }
+        .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+        .signature { text-align: center; width: 30%; }
+        .sig-label { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+        .sig-line { border-top: 1px solid #000; margin-top: 45px; padding-top: 5px; font-size: 12px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 10px; }
+        @media print { body { padding: 10mm; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>مطاحن المهندس الحديثة</h1>
+        <h2>Modern Engineer Mills</h2>
+        <p>إيصال الوزن / Weighing Receipt</p>
+        <p class="receipt-num">رقم: ${d.id}</p>
+    </div>
+    
+    <table>
+        <tr><th colspan="2">بيانات العميل</th></tr>
+        <tr><td>اسم العميل</td><td>${d.vendor_name || '-'}</td></tr>
+        <tr><td>رقم السيارة</td><td>${d.truck_number || '-'}</td></tr>
+        <tr><td>رقم المقطورة</td><td>${d.trailer_number || '-'}</td></tr>
+        <tr><td>المحافظة</td><td>${d.governorate || '-'}</td></tr>
+        <tr><td>الحمولة</td><td>${d.load_type || '-'}</td></tr>
+        <tr><td>النوعية</td><td>${d.wheat_type || '-'}</td></tr>
+        <tr><td>عدد الأشولة</td><td>${d.num_bags || 0}</td></tr>
+        <tr><td>وزن الشوال</td><td>${d.bag_weight || 0} كجم</td></tr>
+    </table>
+    
+    <table>
+        <tr><th colspan="2">تفاصيل الوزن</th></tr>
+        <tr><td>الوزنة الأولى</td><td><strong>${firstWeight} كجم</strong></td></tr>
+        <tr><td>التاريخ والوقت</td><td>${d.captured_at || '-'}</td></tr>
+        <tr><td>الوزنة الثانية</td><td><strong>${secondWeight} كجم</strong></td></tr>
+        <tr><td>اجمالي الوزن</td><td><strong>${totalWeight} كجم</strong></td></tr>
+        <tr><td>كود الوزن</td><td><strong>${codeWeight} كجم</strong></td></tr>
+        <tr class="net-row"><td>الصافي</td><td>${netWeight} كجم</td></tr>
+    </table>
+    
+    <div class="signatures">
+        <div class="signature">
+            <div class="sig-label">موظف الاستلام</div>
+            <div class="sig-line">التوقيع</div>
+        </div>
+        <div class="signature">
+            <div class="sig-label">المستلم</div>
+            <div class="sig-line">${d.receiver_name || 'التوقيع'}</div>
+        </div>
+        <div class="signature">
+            <div class="sig-label">الختم الرسمي</div>
+            <div class="sig-line"></div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        طبع في: ${new Date().toLocaleDateString('ar-EG')} ${new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}
+    </div>
+    
+    <script>
+        window.onload = function() {
+            setTimeout(function() { window.print(); window.close(); }, 300);
+        };
+    <\/script>
+</body>
+</html>`);
+        printWindow.document.close();
+    })
+    .catch(err => {
+        console.error('Print error:', err);
+        alert('خطأ في الطباعة: ' + err);
+    });
 }
 
 // Export to Excel
