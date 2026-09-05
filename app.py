@@ -23,11 +23,12 @@ app.secret_key = os.environ.get("SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION_" + os.
 
 # DATABASE CONFIG - Matches YOUR schema
 DB_CONFIG = {
-    'host': os.environ.get('MYSQLHOST', 'localhost'),
-    'user': os.environ.get('MYSQLUSER', 'root'),
-    'password': os.environ.get('MYSQLPASSWORD', 'root'),
-    'database': os.environ.get('MYSQLDATABASE', 'mill'),
-    'port': int(os.environ.get('MYSQLPORT', 3306))
+    "host": os.environ.get("DB_HOST", "localhost"),
+    "user": os.environ.get("DB_USER", "root"),
+    "password": os.environ.get("DB_PASSWORD", "root"),
+    "database": os.environ.get("DB_NAME", "mill"),
+    "charset": "utf8mb4",
+    "use_unicode": True
 }
 
 @contextmanager
@@ -1735,6 +1736,56 @@ def admin():
     except Exception as e:
         print(f"Unhandled error: {e}")
         return render_template("admin.html", users=[])
+
+@app.route("/vendors/<int:vendor_id>/edit", methods=["POST"])
+@login_required
+def edit_vendor(vendor_id):
+    try:
+        name = request.form.get("name", "").strip()
+        phone = request.form.get("phone", "")
+        notes = request.form.get("notes", "")
+
+        if not name:
+            flash("اسم العميل مطلوب", "danger")
+            return redirect("/vendors")
+
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE vendors SET name=%s, phone=%s, notes=%s WHERE id=%s",
+                (name, phone, notes, vendor_id)
+            )
+            conn.commit()
+        flash("✅ تم تحديث العميل بنجاح", "success")
+    except Exception as e:
+        print(f"Error updating vendor: {e}")
+        flash("❌ خطأ في تحديث العميل", "danger")
+    return redirect("/vendors")
+
+
+@app.route("/vendors/<int:vendor_id>/delete", methods=["POST"])
+@login_required
+def delete_vendor(vendor_id):
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            # Check if vendor has intake records
+            cur.execute("SELECT COUNT(*) as cnt FROM intake WHERE vendor_id = %s", (vendor_id,))
+            result = cur.fetchone()
+            count = result[0] if result else 0
+
+            if count > 0:
+                flash(f"❌ لا يمكن حذف العميل - لديه {count} سجل وزنة مرتبط", "danger")
+                return redirect("/vendors")
+
+            cur.execute("DELETE FROM vendors WHERE id = %s", (vendor_id,))
+            conn.commit()
+        flash("✅ تم حذف العميل بنجاح", "success")
+    except Exception as e:
+        print(f"Error deleting vendor: {e}")
+        flash("❌ خطأ في حذف العميل", "danger")
+    return redirect("/vendors")
+
 
 @app.route("/admin/vendors")
 @login_required
