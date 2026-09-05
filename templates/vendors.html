@@ -221,8 +221,16 @@ body { direction: rtl; font-family: Arial, sans-serif; }
                 <td>{{ v.notes or '-' }}</td>
                 <td>
                     <button class="btn btn-edit" onclick="toggleEdit({{ v.id }})">
-                        ✏️ تعديل / Edit
+                        ✏️ تعديل
                     </button>
+                    <form method="POST" action="/vendors/{{ v.id }}/delete" 
+                          style="display:inline;"
+                          onsubmit="return confirm('هل أنت متأكد من حذف هذا العميل؟\nAre you sure you want to delete this vendor?')">
+                        <button type="submit" class="btn" 
+                                style="background:#ef4444; color:white; padding:6px 14px; font-size:13px;">
+                            🗑️ حذف
+                        </button>
+                    </form>
                 </td>
             </tr>
             <!-- Inline edit form row -->
