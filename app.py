@@ -2021,17 +2021,14 @@ def api_delete_expense(expense_id):
 def api_charts_revenue():
     """Get revenue chart data"""
     try:
-        start_date = request.args.get('start', datetime.now().strftime('%Y-%m-01'))
-        end_date = request.args.get('end', datetime.now().strftime('%Y-%m-%d'))
-        
         with get_db() as conn:
             cursor = conn.cursor(dictionary=True)
             cursor.execute("""
                 SELECT source_type, SUM(amount) as total
                 FROM accounting_revenue
-                WHERE date BETWEEN %s AND %s
+                WHERE YEAR(date) = YEAR(CURDATE()) AND MONTH(date) = MONTH(CURDATE())
                 GROUP BY source_type
-            """, (start_date, end_date))
+            """)
             data = cursor.fetchall()
             
             source_names = {
@@ -2052,17 +2049,14 @@ def api_charts_revenue():
 def api_charts_expenses():
     """Get expense chart data"""
     try:
-        start_date = request.args.get('start', datetime.now().strftime('%Y-%m-01'))
-        end_date = request.args.get('end', datetime.now().strftime('%Y-%m-%d'))
-        
         with get_db() as conn:
             cursor = conn.cursor(dictionary=True)
             cursor.execute("""
                 SELECT category, SUM(amount) as total
                 FROM accounting_expenses
-                WHERE date BETWEEN %s AND %s
+                WHERE YEAR(date) = YEAR(CURDATE()) AND MONTH(date) = MONTH(CURDATE())
                 GROUP BY category
-            """, (start_date, end_date))
+            """)
             data = cursor.fetchall()
             
             category_names = {
@@ -2756,6 +2750,104 @@ def api_stock_adjust():
     except Exception as e:
         print(f"Error adjusting stock: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route("/api/stock/item", methods=["POST"])
+@login_required
+def api_stock_add_item():
+    """Add a new store item"""
+    try:
+        data = request.get_json()
+        product_name = data.get('product_name', '').strip()
+        if not product_name:
+            return jsonify({'success': False, 'error': 'Product name required'}), 400
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+            # Generate product code
+            cursor.execute("SELECT COUNT(*) as cnt FROM stock_products")
+            count = cursor.fetchone()[0]
+            product_code = f"STR{str(count + 1).zfill(4)}"
+
+            cursor.execute("""
+                INSERT INTO stock_products 
+                (product_code, product_name, category, unit, quantity, min_level, max_level, unit_cost, location)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                product_code,
+                product_name,
+                data.get('category', 'عام'),
+                data.get('unit', 'قطعة'),
+                float(data.get('quantity', 0)),
+                float(data.get('min_level', 0)),
+                float(data.get('max_level', 9999)),
+                float(data.get('unit_cost', 0)),
+                data.get('location', '')
+            ))
+
+            # Record initial stock movement if quantity > 0
+            if float(data.get('quantity', 0)) > 0:
+                item_id = cursor.lastrowid
+                qty = float(data.get('quantity', 0))
+                cursor.execute("""
+                    INSERT INTO stock_movements 
+                    (product_id, movement_type, quantity, balance_before, balance_after,
+                     movement_date, movement_time, notes, created_by)
+                    VALUES (%s, 'in', %s, 0, %s, CURDATE(), CURTIME(), %s, %s)
+                """, (item_id, qty, qty, 'رصيد افتتاحي', session.get('username')))
+
+            conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error adding item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/stock/item/<int:item_id>", methods=["PUT"])
+@login_required
+def api_stock_edit_item(item_id):
+    """Edit a store item"""
+    try:
+        data = request.get_json()
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE stock_products 
+                SET product_name=%s, category=%s, unit=%s,
+                    min_level=%s, unit_cost=%s, location=%s
+                WHERE id=%s
+            """, (
+                data.get('product_name'),
+                data.get('category'),
+                data.get('unit'),
+                float(data.get('min_level', 0)),
+                float(data.get('unit_cost', 0)),
+                data.get('location', ''),
+                item_id
+            ))
+            conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error editing item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/stock/item/<int:item_id>", methods=["DELETE"])
+@login_required
+def api_stock_delete_item(item_id):
+    """Delete a store item"""
+    try:
+        if session.get('role') != 'ADMIN':
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM stock_movements WHERE product_id = %s", (item_id,))
+            cursor.execute("DELETE FROM stock_products WHERE id = %s", (item_id,))
+            conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error deleting item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 # ============================================================================
 # BX-3 PACKING SCALE ROUTES
