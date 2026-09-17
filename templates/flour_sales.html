@@ -377,14 +377,6 @@ tfoot td {
 let invoices = [];
 let nextInvoiceNum = null;
 
-// Set today's date
-const today = new Date().toISOString().split('T')[0];
-document.getElementById('salesDate').value = today;
-
-// Load settings first, then data
-loadSettings();
-loadFromStorage();
-
 // ── SETTINGS ──
 const DEFAULT_SETTINGS = {
     branKgPerBag: 1.5,
@@ -404,7 +396,8 @@ let settings = { ...DEFAULT_SETTINGS };
 function loadSettings() {
     const saved = localStorage.getItem('flourSalesSettings');
     if (saved) {
-        settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        try { settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }; }
+        catch(e) { settings = { ...DEFAULT_SETTINGS }; }
     }
     applySettingsToForm();
 }
@@ -425,7 +418,6 @@ function applySettingsToForm() {
     document.getElementById('stE5Limit').value = settings.e5Limit;
     document.getElementById('stE5Val').value   = settings.e5Val;
     document.getElementById('stE6Val').value   = settings.e6Val;
-    // Update hint
     const hint = document.getElementById('formulaHint');
     if (hint) hint.textContent = `* النخالة = شكاير × ${settings.branKgPerBag} | قيمة النخالة = كجم × ${settings.branPrice} | فوارغ تبعاً لكمية النخالة`;
 }
@@ -449,10 +441,11 @@ function saveSettings() {
         e6Val:   parseFloat(document.getElementById('stE6Val').value)   || 30,
     };
     localStorage.setItem('flourSalesSettings', JSON.stringify(settings));
-    // Recalculate all existing invoices with new settings
+    applySettingsToForm();
     recalcAllInvoices();
     renderTable();
     updateSummary();
+    alert('✅ تم حفظ الاعدادات!');
 }
 
 function resetSettings() {
@@ -470,13 +463,11 @@ function toggleSettings() {
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
 
-// ── CALCULATIONS (use settings) ──
+// ── CALCULATIONS ──
 function calcBranKg(bags)      { return bags * settings.branKgPerBag; }
 function calcBranVal(branKg)   { return branKg * settings.branPrice; }
 function calcFlourVal(bags)    { return bags * settings.flourPrice; }
-function calcExtraBranVal(extraKg) {
-    return extraKg * (235 * settings.extraBranRate) / 1000;
-}
+function calcExtraBranVal(extraKg) { return extraKg * (235 * settings.extraBranRate) / 1000; }
 function calcEmpties(branKg) {
     if (branKg < settings.e1Limit) return settings.e1Val;
     if (branKg < settings.e2Limit) return settings.e2Val;
@@ -488,114 +479,88 @@ function calcEmpties(branKg) {
 
 function recalcAllInvoices() {
     invoices = invoices.map(inv => {
-        const branKg      = calcBranKg(inv.bags);
-        const branVal     = calcBranVal(branKg);
-        const flourVal    = calcFlourVal(inv.bags);
+        const branKg       = calcBranKg(inv.bags);
+        const branVal      = calcBranVal(branKg);
+        const flourVal     = calcFlourVal(inv.bags);
         const extraBranVal = calcExtraBranVal(inv.extraBranKg || 0);
-        const empties     = calcEmpties(branKg);
-        const total       = branVal + extraBranVal + empties + flourVal + (inv.union || 0) + (inv.service || 0);
+        const empties      = calcEmpties(branKg);
+        const total        = branVal + extraBranVal + empties + flourVal + (inv.union || 0) + (inv.service || 0);
         return { ...inv, branKg, branVal, flourVal, extraBranVal, empties, total };
     });
 }
 
-function calcTotal(branVal, extraBranVal, empties, flourVal, service, union) {
-    return (branVal || 0) + (extraBranVal || 0) + (empties || 0) +
-           (flourVal || 0) + (service || 0) + (union || 0);
-}
-
 function calcRow() {
-    const bags = parseFloat(document.getElementById('flourBags').value) || 0;
+    const bags    = parseFloat(document.getElementById('flourBags').value) || 0;
     const extraKg = parseFloat(document.getElementById('extraBran').value) || 0;
-
-    const branKg = calcBranKg(bags);
-    const branVal = calcBranVal(branKg);
+    const branKg      = calcBranKg(bags);
+    const branVal     = calcBranVal(branKg);
     const extraBranVal = calcExtraBranVal(extraKg);
-    const empties = bags > 0 ? calcEmpties(branKg) : 0;
-    const total = calcTotal(branVal, extraBranVal, empties, 0, 0, 0);
-
-    document.getElementById('prvBranKg').textContent = branKg.toFixed(1);
-    document.getElementById('prvBranVal').textContent = branVal.toFixed(2);
+    const empties     = bags > 0 ? calcEmpties(branKg) : 0;
+    const total       = branVal + extraBranVal + empties;
+    document.getElementById('prvBranKg').textContent      = branKg.toFixed(1);
+    document.getElementById('prvBranVal').textContent     = branVal.toFixed(2);
     document.getElementById('prvExtraBranVal').textContent = extraBranVal.toFixed(2);
-    document.getElementById('prvEmpties').textContent = empties;
-    document.getElementById('prvTotal').textContent = total.toFixed(2);
+    document.getElementById('prvEmpties').textContent     = empties;
+    document.getElementById('prvTotal').textContent       = total.toFixed(2);
 }
 
 // ── ADD INVOICE ──
 function addInvoice() {
     const invoiceNum = document.getElementById('invoiceNum').value;
-    const bags = parseFloat(document.getElementById('flourBags').value);
+    const bags   = parseFloat(document.getElementById('flourBags').value);
     const extraKg = parseFloat(document.getElementById('extraBran').value) || 0;
-    const union = parseFloat(document.getElementById('union').value) || 0;
+    const union  = parseFloat(document.getElementById('union').value) || 0;
 
     if (!invoiceNum) { alert('الرجاء ادخال رقم الفاتورة'); return; }
     if (!bags || bags <= 0) { alert('الرجاء ادخال كمية الدقيق'); return; }
+    if (invoices.find(i => i.num == invoiceNum)) { alert('رقم الفاتورة موجود بالفعل!'); return; }
 
-    // Check for duplicate
-    if (invoices.find(i => i.num == invoiceNum)) {
-        alert('رقم الفاتورة موجود بالفعل!');
-        return;
-    }
-
-    const branKg = calcBranKg(bags);
-    const branVal = calcBranVal(branKg);
+    const branKg       = calcBranKg(bags);
+    const branVal      = calcBranVal(branKg);
+    const flourVal     = calcFlourVal(bags);
     const extraBranVal = calcExtraBranVal(extraKg);
-    const empties = calcEmpties(branKg);
-    const total = calcTotal(branVal, extraBranVal, empties, 0, 0, union);
+    const empties      = calcEmpties(branKg);
+    const total        = branVal + extraBranVal + empties + flourVal + union;
 
     invoices.push({
         num: parseInt(invoiceNum),
-        bags: bags,
-        flourVal: 0,
-        branKg: branKg,
-        branVal: branVal,
-        extraBranKg: extraKg,
-        extraBranVal: extraBranVal,
-        empties: empties,
-        service: 0,
-        union: union,
-        total: total
+        bags, flourVal, branKg, branVal,
+        extraBranKg: extraKg, extraBranVal,
+        empties, service: 0, union, total
     });
 
-    // Sort by invoice number
     invoices.sort((a, b) => a.num - b.num);
 
-    // Auto-increment next invoice number
-    nextInvoiceNum = parseInt(invoiceNum) + 1;
-    document.getElementById('invoiceNum').value = nextInvoiceNum;
-    document.getElementById('flourBags').value = '';
-    document.getElementById('extraBran').value = 0;
-    document.getElementById('union').value = 0;
+    document.getElementById('invoiceNum').value = parseInt(invoiceNum) + 1;
+    document.getElementById('flourBags').value  = '';
+    document.getElementById('extraBran').value  = 0;
+    document.getElementById('union').value      = 0;
     calcRow();
-
     saveToStorage();
     renderTable();
     updateSummary();
     document.getElementById('flourBags').focus();
 }
 
-// ── DELETE INVOICE ──
+// ── DELETE ──
 function deleteInvoice(idx) {
     if (!confirm('حذف هذه الفاتورة؟')) return;
     invoices.splice(idx, 1);
-    saveToStorage();
-    renderTable();
-    updateSummary();
+    saveToStorage(); renderTable(); updateSummary();
 }
 
 function clearAll() {
     if (!invoices.length) return;
     if (!confirm('حذف كل الفواتير؟')) return;
     invoices = [];
-    saveToStorage();
-    renderTable();
-    updateSummary();
+    saveToStorage(); renderTable(); updateSummary();
 }
 
 function clearForm() {
     document.getElementById('invoiceNum').value = '';
-    document.getElementById('flourBags').value = '';
-    document.getElementById('extraBran').value = 0;
-    document.getElementById('union').value = 0;
+    document.getElementById('flourBags').value  = '';
+    document.getElementById('extraBran').value  = 0;
+    document.getElementById('union').value      = 0;
     calcRow();
 }
 
@@ -603,19 +568,16 @@ function clearForm() {
 function renderTable() {
     const tbody = document.getElementById('invoicesBody');
     const tfoot = document.getElementById('invoicesFoot');
-    const emptyRow = document.getElementById('emptyRow');
 
     if (!invoices.length) {
-        tbody.innerHTML = `<tr id="emptyRow"><td colspan="12" style="text-align:center; padding:30px; color:#9ca3af;">
-            لا توجد فواتير - اضف فاتورة بالنموذج اعلاه
-        </td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:#9ca3af;">لا توجد فواتير - اضف فاتورة بالنموذج اعلاه</td></tr>';
         tfoot.style.display = 'none';
         return;
     }
 
     tbody.innerHTML = invoices.map((inv, i) => `
         <tr>
-            <td>${i + 1}</td>
+            <td>${i+1}</td>
             <td><strong>${inv.num}</strong></td>
             <td>${inv.bags}</td>
             <td>${inv.branKg.toFixed(1)}</td>
@@ -626,84 +588,72 @@ function renderTable() {
             <td>${inv.service || 0}</td>
             <td>${inv.union || 0}</td>
             <td><strong style="color:#059669;">${inv.total.toFixed(2)}</strong></td>
-            <td>
-                <button class="btn btn-danger btn-sm" onclick="deleteInvoice(${i})">×</button>
-            </td>
-        </tr>
-    `).join('');
+            <td><button class="btn btn-danger btn-sm" onclick="deleteInvoice(${i})">×</button></td>
+        </tr>`).join('');
 
-    // Totals
-    const totBags = invoices.reduce((s, i) => s + i.bags, 0);
-    const totBranKg = invoices.reduce((s, i) => s + i.branKg, 0);
-    const totBranVal = invoices.reduce((s, i) => s + i.branVal, 0);
-    const totExtraKg = invoices.reduce((s, i) => s + (i.extraBranKg || 0), 0);
-    const totExtraVal = invoices.reduce((s, i) => s + i.extraBranVal, 0);
-    const totEmpties = invoices.reduce((s, i) => s + i.empties, 0);
-    const totService = invoices.reduce((s, i) => s + (i.service || 0), 0);
-    const totUnion = invoices.reduce((s, i) => s + (i.union || 0), 0);
-    const totTotal = invoices.reduce((s, i) => s + i.total, 0);
+    const totBags    = invoices.reduce((s,i) => s + i.bags, 0);
+    const totBranKg  = invoices.reduce((s,i) => s + i.branKg, 0);
+    const totBranVal = invoices.reduce((s,i) => s + i.branVal, 0);
+    const totExtraKg = invoices.reduce((s,i) => s + (i.extraBranKg||0), 0);
+    const totExtraVal= invoices.reduce((s,i) => s + i.extraBranVal, 0);
+    const totEmpties = invoices.reduce((s,i) => s + i.empties, 0);
+    const totService = invoices.reduce((s,i) => s + (i.service||0), 0);
+    const totUnion   = invoices.reduce((s,i) => s + (i.union||0), 0);
+    const totTotal   = invoices.reduce((s,i) => s + i.total, 0);
     const load = totBags / 8;
-    const due = totTotal + load;
+    const due  = totTotal + load;
 
-    document.getElementById('ftBags').textContent = totBags;
-    document.getElementById('ftBranKg').textContent = totBranKg.toFixed(1);
-    document.getElementById('ftBranVal').textContent = totBranVal.toFixed(2);
+    document.getElementById('ftBags').textContent      = totBags;
+    document.getElementById('ftBranKg').textContent    = totBranKg.toFixed(1);
+    document.getElementById('ftBranVal').textContent   = totBranVal.toFixed(2);
     document.getElementById('ftExtraBranKg').textContent = totExtraKg;
     document.getElementById('ftExtraBranVal').textContent = totExtraVal.toFixed(2);
-    document.getElementById('ftEmpties').textContent = totEmpties;
-    document.getElementById('ftService').textContent = totService;
-    document.getElementById('ftUnion').textContent = totUnion;
-    document.getElementById('ftTotal').textContent = totTotal.toFixed(2);
-    document.getElementById('ftLoad').textContent = load.toFixed(2);
-    document.getElementById('ftDue').textContent = due.toFixed(2);
-
+    document.getElementById('ftEmpties').textContent   = totEmpties;
+    document.getElementById('ftService').textContent   = totService;
+    document.getElementById('ftUnion').textContent     = totUnion;
+    document.getElementById('ftTotal').textContent     = totTotal.toFixed(2);
+    document.getElementById('ftLoad').textContent      = load.toFixed(2);
+    document.getElementById('ftDue').textContent       = due.toFixed(2);
     tfoot.style.display = '';
 }
 
 // ── SUMMARY CARDS ──
 function updateSummary() {
     document.getElementById('sumInvoices').textContent = invoices.length;
-    document.getElementById('sumBags').textContent = invoices.reduce((s, i) => s + i.bags, 0);
-    document.getElementById('sumBranKg').textContent = invoices.reduce((s, i) => s + i.branKg, 0).toFixed(1);
-    document.getElementById('sumBranVal').textContent = invoices.reduce((s, i) => s + i.branVal, 0).toFixed(0);
-    document.getElementById('sumEmpties').textContent = invoices.reduce((s, i) => s + i.empties, 0);
-    document.getElementById('sumTotal').textContent = invoices.reduce((s, i) => s + i.total, 0).toFixed(0);
+    document.getElementById('sumBags').textContent     = invoices.reduce((s,i) => s+i.bags, 0);
+    document.getElementById('sumBranKg').textContent   = invoices.reduce((s,i) => s+i.branKg, 0).toFixed(1);
+    document.getElementById('sumBranVal').textContent  = invoices.reduce((s,i) => s+i.branVal, 0).toFixed(0);
+    document.getElementById('sumEmpties').textContent  = invoices.reduce((s,i) => s+i.empties, 0);
+    document.getElementById('sumTotal').textContent    = invoices.reduce((s,i) => s+i.total, 0).toFixed(0);
 }
 
-// ── LOCAL STORAGE ──
+// ── STORAGE ──
 function saveToStorage() {
     const date = document.getElementById('salesDate').value;
     localStorage.setItem('flourSales_' + date, JSON.stringify(invoices));
-    localStorage.setItem('flourSales_lastDate', date);
 }
 
 function loadFromStorage() {
-    const date = document.getElementById('salesDate').value;
+    const date  = document.getElementById('salesDate').value;
     const saved = localStorage.getItem('flourSales_' + date);
-    if (saved) {
-        invoices = JSON.parse(saved);
-        renderTable();
-        updateSummary();
-    }
-}
-
-// Reload when date changes
-document.getElementById('salesDate').addEventListener('change', function() {
-    invoices = [];
-    loadFromStorage();
+    invoices = saved ? JSON.parse(saved) : [];
     renderTable();
     updateSummary();
-});
+}
 
-// ── EXPORT TO EXCEL ──
+document.getElementById('salesDate').addEventListener('change', loadFromStorage);
+
+// ── EXPORT ──
 function exportExcel() {
-    if (!invoices.length) {
-        alert('لا توجد فواتير للتصدير');
-        return;
-    }
+    if (!invoices.length) { alert('لا توجد فواتير للتصدير'); return; }
     const date = document.getElementById('salesDate').value;
     window.location.href = `/api/flour_sales/export?date=${date}&data=${encodeURIComponent(JSON.stringify(invoices))}`;
 }
+
+// ── INIT (always last) ──
+document.getElementById('salesDate').value = new Date().toISOString().split('T')[0];
+loadSettings();
+loadFromStorage();
 </script>
 
 {% endblock %}
