@@ -157,6 +157,74 @@ tfoot td {
     <div style="display:flex; gap:10px; align-items:center;">
         <input type="date" id="salesDate" style="padding:7px 10px; border-radius:8px; border:none; font-size:13px;">
         <button class="btn btn-warning" onclick="exportExcel()">📥 تحميل Excel</button>
+        <button class="btn" style="background:rgba(255,255,255,0.2); color:white;" onclick="toggleSettings()">⚙️ الاعدادات</button>
+    </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="card" id="settingsPanel" style="display:none; border: 2px solid #1e3c72;">
+    <div class="card-title">⚙️ اعدادات الحسابات / Formula Settings</div>
+    
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+        
+        <div class="form-group">
+            <label>معامل النخالة الناعمة (كجم لكل شكارة)</label>
+            <input type="number" id="stBranKgPerBag" step="0.1" min="0" value="1.5" oninput="saveSettings(); calcRow();">
+            <small style="color:#6b7280;">الاصل: 1.5 كجم لكل شكارة</small>
+        </div>
+
+        <div class="form-group">
+            <label>سعر النخالة الناعمة (LE لكل كجم)</label>
+            <input type="number" id="stBranPrice" step="0.5" min="0" value="4" oninput="saveSettings(); calcRow();">
+            <small style="color:#6b7280;">الاصل: 4 LE لكل كجم</small>
+        </div>
+
+        <div class="form-group">
+            <label>سعر النخالة الاضافية (235 × ؟) / 1000</label>
+            <input type="number" id="stExtraBranRate" step="1" min="0" value="20" oninput="saveSettings(); calcRow();">
+            <small style="color:#6b7280;">الاصل: 20 (يعني 235×20/1000)</small>
+        </div>
+
+        <div class="form-group">
+            <label>سعر قيمة الدقيق (LE لكل شكارة)</label>
+            <input type="number" id="stFlourPrice" step="0.5" min="0" value="0" oninput="saveSettings(); calcRow();">
+            <small style="color:#6b7280;">الاصل: 0 (فارغ في الملف الاصلي)</small>
+        </div>
+    </div>
+
+    <div style="margin-top:15px;">
+        <div style="font-weight:bold; margin-bottom:10px; color:#1e3c72;">فوارغ النخالة الناعمة (LE) - حسب الكمية:</div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:10px;">
+            <div class="form-group">
+                <label>اقل من <input type="number" id="stE1Limit" value="26.1" style="width:70px; display:inline; padding:3px;" oninput="saveSettings();"> كجم</label>
+                <input type="number" id="stE1Val" value="6" oninput="saveSettings(); calcRow();">
+            </div>
+            <div class="form-group">
+                <label>اقل من <input type="number" id="stE2Limit" value="50.1" style="width:70px; display:inline; padding:3px;" oninput="saveSettings();"> كجم</label>
+                <input type="number" id="stE2Val" value="12" oninput="saveSettings(); calcRow();">
+            </div>
+            <div class="form-group">
+                <label>اقل من <input type="number" id="stE3Limit" value="75.1" style="width:70px; display:inline; padding:3px;" oninput="saveSettings();"> كجم</label>
+                <input type="number" id="stE3Val" value="18" oninput="saveSettings(); calcRow();">
+            </div>
+            <div class="form-group">
+                <label>اقل من <input type="number" id="stE4Limit" value="100.1" style="width:70px; display:inline; padding:3px;" oninput="saveSettings();"> كجم</label>
+                <input type="number" id="stE4Val" value="24" oninput="saveSettings(); calcRow();">
+            </div>
+            <div class="form-group">
+                <label>اقل من <input type="number" id="stE5Limit" value="125.1" style="width:70px; display:inline; padding:3px;" oninput="saveSettings();"> كجم</label>
+                <input type="number" id="stE5Val" value="15" oninput="saveSettings(); calcRow();">
+            </div>
+            <div class="form-group">
+                <label>اكثر من كل ما سبق</label>
+                <input type="number" id="stE6Val" value="30" oninput="saveSettings(); calcRow();">
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top:15px; display:flex; gap:10px;">
+        <button class="btn btn-primary" onclick="saveSettings(); alert('تم حفظ الاعدادات!');">💾 حفظ الاعدادات</button>
+        <button class="btn btn-danger" onclick="resetSettings()">↩️ استعادة الافتراضي</button>
     </div>
 </div>
 
@@ -237,7 +305,7 @@ tfoot td {
     <div class="actions-row">
         <button class="btn btn-success" onclick="addInvoice()">✅ اضافة</button>
         <button class="btn" style="background:#e5e7eb;" onclick="clearForm()">مسح</button>
-        <span style="font-size:12px; color:#6b7280;">
+        <span style="font-size:12px; color:#6b7280;" id="formulaHint">
             * النخالة = شكاير × 1.5 | قيمة النخالة = كجم × 4 | فوارغ تبعاً لكمية النخالة
         </span>
     </div>
@@ -313,20 +381,121 @@ let nextInvoiceNum = null;
 const today = new Date().toISOString().split('T')[0];
 document.getElementById('salesDate').value = today;
 
-// Load saved data
+// Load settings first, then data
+loadSettings();
 loadFromStorage();
 
-// ── CALCULATIONS ──
-function calcBranKg(bags) { return bags * 1.5; }
-function calcBranVal(branKg) { return branKg * 4; }
-function calcExtraBranVal(extraKg) { return extraKg * (235 * 20) / 1000; }
+// ── SETTINGS ──
+const DEFAULT_SETTINGS = {
+    branKgPerBag: 1.5,
+    branPrice: 4,
+    extraBranRate: 20,
+    flourPrice: 0,
+    e1Limit: 26.1, e1Val: 6,
+    e2Limit: 50.1, e2Val: 12,
+    e3Limit: 75.1, e3Val: 18,
+    e4Limit: 100.1, e4Val: 24,
+    e5Limit: 125.1, e5Val: 15,
+    e6Val: 30
+};
+
+let settings = { ...DEFAULT_SETTINGS };
+
+function loadSettings() {
+    const saved = localStorage.getItem('flourSalesSettings');
+    if (saved) {
+        settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+    }
+    applySettingsToForm();
+}
+
+function applySettingsToForm() {
+    document.getElementById('stBranKgPerBag').value  = settings.branKgPerBag;
+    document.getElementById('stBranPrice').value     = settings.branPrice;
+    document.getElementById('stExtraBranRate').value = settings.extraBranRate;
+    document.getElementById('stFlourPrice').value    = settings.flourPrice;
+    document.getElementById('stE1Limit').value = settings.e1Limit;
+    document.getElementById('stE1Val').value   = settings.e1Val;
+    document.getElementById('stE2Limit').value = settings.e2Limit;
+    document.getElementById('stE2Val').value   = settings.e2Val;
+    document.getElementById('stE3Limit').value = settings.e3Limit;
+    document.getElementById('stE3Val').value   = settings.e3Val;
+    document.getElementById('stE4Limit').value = settings.e4Limit;
+    document.getElementById('stE4Val').value   = settings.e4Val;
+    document.getElementById('stE5Limit').value = settings.e5Limit;
+    document.getElementById('stE5Val').value   = settings.e5Val;
+    document.getElementById('stE6Val').value   = settings.e6Val;
+    // Update hint
+    const hint = document.getElementById('formulaHint');
+    if (hint) hint.textContent = `* النخالة = شكاير × ${settings.branKgPerBag} | قيمة النخالة = كجم × ${settings.branPrice} | فوارغ تبعاً لكمية النخالة`;
+}
+
+function saveSettings() {
+    settings = {
+        branKgPerBag:  parseFloat(document.getElementById('stBranKgPerBag').value)  || 1.5,
+        branPrice:     parseFloat(document.getElementById('stBranPrice').value)     || 4,
+        extraBranRate: parseFloat(document.getElementById('stExtraBranRate').value) || 20,
+        flourPrice:    parseFloat(document.getElementById('stFlourPrice').value)    || 0,
+        e1Limit: parseFloat(document.getElementById('stE1Limit').value) || 26.1,
+        e1Val:   parseFloat(document.getElementById('stE1Val').value)   || 6,
+        e2Limit: parseFloat(document.getElementById('stE2Limit').value) || 50.1,
+        e2Val:   parseFloat(document.getElementById('stE2Val').value)   || 12,
+        e3Limit: parseFloat(document.getElementById('stE3Limit').value) || 75.1,
+        e3Val:   parseFloat(document.getElementById('stE3Val').value)   || 18,
+        e4Limit: parseFloat(document.getElementById('stE4Limit').value) || 100.1,
+        e4Val:   parseFloat(document.getElementById('stE4Val').value)   || 24,
+        e5Limit: parseFloat(document.getElementById('stE5Limit').value) || 125.1,
+        e5Val:   parseFloat(document.getElementById('stE5Val').value)   || 15,
+        e6Val:   parseFloat(document.getElementById('stE6Val').value)   || 30,
+    };
+    localStorage.setItem('flourSalesSettings', JSON.stringify(settings));
+    // Recalculate all existing invoices with new settings
+    recalcAllInvoices();
+    renderTable();
+    updateSummary();
+}
+
+function resetSettings() {
+    if (!confirm('استعادة الاعدادات الافتراضية؟')) return;
+    settings = { ...DEFAULT_SETTINGS };
+    localStorage.removeItem('flourSalesSettings');
+    applySettingsToForm();
+    recalcAllInvoices();
+    renderTable();
+    updateSummary();
+}
+
+function toggleSettings() {
+    const panel = document.getElementById('settingsPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+// ── CALCULATIONS (use settings) ──
+function calcBranKg(bags)      { return bags * settings.branKgPerBag; }
+function calcBranVal(branKg)   { return branKg * settings.branPrice; }
+function calcFlourVal(bags)    { return bags * settings.flourPrice; }
+function calcExtraBranVal(extraKg) {
+    return extraKg * (235 * settings.extraBranRate) / 1000;
+}
 function calcEmpties(branKg) {
-    if (branKg < 26.1) return 6;
-    if (branKg < 50.1) return 12;
-    if (branKg < 75.1) return 18;
-    if (branKg < 100.1) return 24;
-    if (branKg < 125.1) return 15;
-    return 30;
+    if (branKg < settings.e1Limit) return settings.e1Val;
+    if (branKg < settings.e2Limit) return settings.e2Val;
+    if (branKg < settings.e3Limit) return settings.e3Val;
+    if (branKg < settings.e4Limit) return settings.e4Val;
+    if (branKg < settings.e5Limit) return settings.e5Val;
+    return settings.e6Val;
+}
+
+function recalcAllInvoices() {
+    invoices = invoices.map(inv => {
+        const branKg      = calcBranKg(inv.bags);
+        const branVal     = calcBranVal(branKg);
+        const flourVal    = calcFlourVal(inv.bags);
+        const extraBranVal = calcExtraBranVal(inv.extraBranKg || 0);
+        const empties     = calcEmpties(branKg);
+        const total       = branVal + extraBranVal + empties + flourVal + (inv.union || 0) + (inv.service || 0);
+        return { ...inv, branKg, branVal, flourVal, extraBranVal, empties, total };
+    });
 }
 
 function calcTotal(branVal, extraBranVal, empties, flourVal, service, union) {
