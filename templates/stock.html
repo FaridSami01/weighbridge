@@ -1,757 +1,732 @@
 {% extends "base.html" %}
 {% block content %}
+
 <style>
-.stock-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-}
+* { box-sizing: border-box; }
+body { direction: rtl; font-family: Arial, sans-serif; }
 
 .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 12px;
+    color: white;
 }
 
-.page-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: #2c3e50;
-}
+.page-title { font-size: 22px; font-weight: bold; margin: 0; }
 
-/* Summary Cards */
 .summary-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
 }
 
 .summary-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
-
-.summary-card.flour {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.summary-card.bran {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-}
-
-.summary-card.bags {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-}
-
-.summary-card h3 {
-    margin: 0 0 10px 0;
-    font-size: 14px;
-    opacity: 0.9;
-}
-
-.summary-card .value {
-    font-size: 36px;
-    font-weight: bold;
-    margin: 10px 0;
-}
-
-.summary-card .unit {
-    font-size: 14px;
-    opacity: 0.8;
-}
-
-/* Tabs */
-.tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 25px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.tab {
-    padding: 12px 24px;
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 600;
-    color: #666;
-    transition: all 0.3s;
-}
-
-.tab.active {
-    color: #3498db;
-    border-bottom-color: #3498db;
-}
-
-.tab:hover {
-    color: #3498db;
-    background: #f8f9fa;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-/* Stock Cards */
-.stock-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.stock-card {
     background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 20px;
-    transition: all 0.3s;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-top: 4px solid #667eea;
 }
 
-.stock-card:hover {
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    border-color: #3498db;
-}
+.summary-card.low { border-top-color: #ef4444; }
+.summary-card.ok  { border-top-color: #10b981; }
 
-.stock-card h3 {
-    margin: 0 0 15px 0;
-    font-size: 18px;
-    color: #2c3e50;
-}
+.card-value { font-size: 28px; font-weight: bold; color: #1e3c72; }
+.card-label { font-size: 13px; color: #6b7280; margin-top: 5px; }
 
-.stock-info {
-    margin: 8px 0;
-    font-size: 14px;
-    color: #666;
-}
-
-.stock-quantity {
-    font-size: 32px;
-    font-weight: bold;
-    color: #3498db;
-    margin: 15px 0;
-}
-
-.stock-status {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.status-good {
-    background: #e8f5e9;
-    color: #27ae60;
-}
-
-.status-low {
-    background: #fff3e0;
-    color: #f39c12;
-}
-
-.status-critical {
-    background: #ffebee;
-    color: #e74c3c;
-}
-
-/* Table */
-.section-card {
+.card {
     background: white;
-    padding: 25px;
     border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    margin-bottom: 25px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-.section-header {
+.card-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #1e3c72;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e5e7eb;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
 }
 
-.section-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-.table-container {
-    overflow-x: auto;
-    max-height: 600px;
-    overflow-y: auto;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.data-table thead {
-    background: #f8f9fa;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.data-table th {
-    padding: 12px;
-    text-align: left;
-    font-weight: 600;
-    border-bottom: 2px solid #dee2e6;
-    white-space: nowrap;
-}
-
-.data-table td {
-    padding: 12px;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.data-table tbody tr:hover {
-    background: #f8f9fa;
-}
-
-/* Buttons */
 .btn {
-    padding: 10px 20px;
+    padding: 9px 18px;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s;
-    font-size: 14px;
-}
-
-.btn-primary {
-    background: #3498db;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #2980b9;
-    transform: translateY(-2px);
-}
-
-.btn-success {
-    background: #27ae60;
-    color: white;
-}
-
-.btn-warning {
-    background: #f39c12;
-    color: white;
-}
-
-.btn-danger {
-    background: #e74c3c;
-    color: white;
-}
-
-.btn-sm {
-    padding: 6px 12px;
     font-size: 13px;
+    font-weight: bold;
+    transition: all 0.2s;
 }
 
-/* Modal */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-}
+.btn-primary { background: #1e3c72; color: white; }
+.btn-primary:hover { background: #2a5298; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-danger  { background: #ef4444; color: white; }
+.btn-danger:hover  { background: #dc2626; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-warning:hover { background: #d97706; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
 
-.modal.active {
-    display: flex;
-}
-
-.modal-content {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    max-width: 500px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.modal-header {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 20px;
-}
-
-.form-group {
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
     margin-bottom: 15px;
 }
 
 .form-group label {
     display: block;
+    font-size: 13px;
+    font-weight: bold;
+    color: #374151;
     margin-bottom: 5px;
-    font-weight: 600;
-    font-size: 14px;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 10px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 9px 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: Arial, sans-serif;
 }
 
-/* Filters */
-.filters {
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #1e3c72;
+}
+
+table { width: 100%; border-collapse: collapse; }
+th {
+    background: #f8fafc;
+    padding: 11px 12px;
+    text-align: right;
+    font-size: 13px;
+    font-weight: bold;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+td {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #374151;
+}
+
+tr:hover td { background: #f8fafc; }
+
+.badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.badge-low  { background: #fee2e2; color: #991b1b; }
+.badge-ok   { background: #d1fae5; color: #065f46; }
+.badge-high { background: #dbeafe; color: #1e40af; }
+
+.search-box {
+    width: 100%;
+    padding: 9px 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+.search-box:focus { outline: none; border-color: #1e3c72; }
+
+.tabs {
     display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
+    gap: 5px;
+    margin-bottom: 15px;
     flex-wrap: wrap;
 }
 
-.filter-item {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.filter-item label {
+.tab-btn {
+    padding: 7px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
     font-size: 13px;
-    font-weight: 600;
-    color: #666;
+    font-weight: bold;
+    color: #6b7280;
+    transition: all 0.2s;
 }
 
-.filter-item select,
-.filter-item input {
-    padding: 8px 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
+.tab-btn.active {
+    background: #1e3c72;
+    color: white;
+    border-color: #1e3c72;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active { display: flex; }
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #1e3c72;
+    margin-bottom: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #9ca3af;
+}
+
+@media (max-width: 600px) {
+    .summary-cards { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
 }
 </style>
 
-<div class="stock-container">
-    <!-- Page Header -->
-    <div class="page-header">
-        <h1 class="page-title">📦 {{ t.stock_control }}</h1>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn btn-primary" onclick="showAdjustModal()">
-                ➕ {{ t.adjust_stock }}
-            </button>
-            <button class="btn btn-success" onclick="window.print()">
-                🖨️ {{ t.print }}
-            </button>
-        </div>
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">📦 المخزن / Store</h1>
+    <button class="btn btn-success" onclick="showModal('addItemModal')">
+        + اضافة صنف
+    </button>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-cards">
+    <div class="summary-card ok">
+        <div class="card-value" id="totalItems">0</div>
+        <div class="card-label">اجمالي الاصناف</div>
+    </div>
+    <div class="summary-card">
+        <div class="card-value" id="totalValue">0</div>
+        <div class="card-label">اجمالي القيمة (LE)</div>
+    </div>
+    <div class="summary-card low">
+        <div class="card-value" id="lowStockCount">0</div>
+        <div class="card-label">اصناف منخفضة</div>
+    </div>
+    <div class="summary-card">
+        <div class="card-value" id="totalCategories">0</div>
+        <div class="card-label">الفئات</div>
+    </div>
+</div>
+
+<!-- Items Table -->
+<div class="card">
+    <div class="card-title">
+        <span>📋 الاصناف / Items</span>
+        <input type="text" class="search-box" id="searchBox"
+               placeholder="بحث عن صنف..." 
+               style="width: 250px; margin: 0;"
+               onkeyup="filterItems()">
     </div>
 
-    <!-- Summary Cards -->
-    <div class="summary-cards">
-        <div class="summary-card flour">
-            <h3>🌾 {{ t.total_flour }}</h3>
-            <div class="value" id="totalFlour">0</div>
-            <div class="unit">{{ t.kg }}</div>
-        </div>
-        
-        <div class="summary-card bran">
-            <h3>🥖 {{ t.total_bran }}</h3>
-            <div class="value" id="totalBran">0</div>
-            <div class="unit">{{ t.kg }}</div>
-        </div>
-        
-        <div class="summary-card bags">
-            <h3>🛍️ {{ t.total_bags }}</h3>
-            <div class="value" id="totalBags">0</div>
-            <div class="unit">{{ t.bags }}</div>
-        </div>
-        
-        <div class="summary-card">
-            <h3>⚠️ {{ t.low_stock }}</h3>
-            <div class="value" id="lowStockCount">0</div>
-            <div class="unit">{{ t.items }}</div>
-        </div>
+    <!-- Category Filter Tabs -->
+    <div class="tabs" id="categoryTabs">
+        <button class="tab-btn active" onclick="filterByCategory('all', this)">الكل</button>
     </div>
 
-    <!-- Tabs -->
-    <div class="tabs">
-        <button class="tab active" onclick="switchTab('products')">
-            📊 {{ t.products_stock }}
-        </button>
-        <button class="tab" onclick="switchTab('movements')">
-            📝 {{ t.stock_movements }}
-        </button>
-        <button class="tab" onclick="switchTab('alerts')">
-            ⚠️ {{ t.low_stock_alerts }}
-        </button>
+    <div style="overflow-x: auto;">
+        <table id="itemsTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم الصنف</th>
+                    <th>الفئة</th>
+                    <th>الكمية</th>
+                    <th>الوحدة</th>
+                    <th>الحد الادنى</th>
+                    <th>سعر الوحدة</th>
+                    <th>الاجمالي</th>
+                    <th>الموقع</th>
+                    <th>الحالة</th>
+                    <th>الاجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="itemsBody">
+                <tr><td colspan="11" class="empty-state">جاري التحميل...</td></tr>
+            </tbody>
+        </table>
     </div>
+</div>
 
-    <!-- Tab 1: Products Stock -->
-    <div id="tab-products" class="tab-content active">
-        <div class="section-card">
-            <div class="section-header">
-                <h2 class="section-title">{{ t.current_stock }}</h2>
-                <div class="filters">
-                    <div class="filter-item">
-                        <label>{{ t.product_type }}</label>
-                        <select id="filterProductType" onchange="loadStock()">
-                            <option value="">{{ t.all }}</option>
-                            <option value="flour">{{ t.flour }}</option>
-                            <option value="bran">{{ t.bran }}</option>
-                            <option value="bags">{{ t.bags }}</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stock-grid" id="stockGrid">
-                <!-- Populated by JavaScript -->
-            </div>
+<!-- Movement History -->
+<div class="card">
+    <div class="card-title">
+        <span>📊 سجل الحركة / Movement History</span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="date" id="movStart" onchange="loadMovements()">
+            <input type="date" id="movEnd" onchange="loadMovements()">
         </div>
     </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>الصنف</th>
+                    <th>النوع</th>
+                    <th>الكمية</th>
+                    <th>الرصيد قبل</th>
+                    <th>الرصيد بعد</th>
+                    <th>ملاحظات</th>
+                    <th>المستخدم</th>
+                </tr>
+            </thead>
+            <tbody id="movementsBody">
+                <tr><td colspan="8" class="empty-state">اختر فترة زمنية</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-    <!-- Tab 2: Stock Movements -->
-    <div id="tab-movements" class="tab-content">
-        <div class="section-card">
-            <div class="section-header">
-                <h2 class="section-title">{{ t.recent_movements }}</h2>
-                <div class="filters">
-                    <div class="filter-item">
-                        <label>{{ t.from_date }}</label>
-                        <input type="date" id="filterStartDate" onchange="loadMovements()">
-                    </div>
-                    <div class="filter-item">
-                        <label>{{ t.to_date }}</label>
-                        <input type="date" id="filterEndDate" onchange="loadMovements()">
-                    </div>
-                    <div class="filter-item">
-                        <label>{{ t.movement_type }}</label>
-                        <select id="filterMovementType" onchange="loadMovements()">
-                            <option value="">{{ t.all }}</option>
-                            <option value="in">{{ t.stock_in }}</option>
-                            <option value="out">{{ t.stock_out }}</option>
-                            <option value="adjustment">{{ t.adjustment }}</option>
-                        </select>
-                    </div>
-                </div>
+<!-- ADD ITEM MODAL -->
+<div class="modal" id="addItemModal">
+    <div class="modal-content">
+        <div class="modal-title">+ اضافة صنف جديد</div>
+        <div class="form-grid">
+            <div class="form-group" style="grid-column: 1/-1;">
+                <label>اسم الصنف *</label>
+                <input type="text" id="newItemName" placeholder="اسم الصنف">
             </div>
-
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>{{ t.date }}</th>
-                            <th>{{ t.product }}</th>
-                            <th>{{ t.type }}</th>
-                            <th>{{ t.quantity }}</th>
-                            <th>{{ t.balance }}</th>
-                            <th>{{ t.notes }}</th>
-                            <th>{{ t.operator }}</th>
-                        </tr>
-                    </thead>
-                    <tbody id="movementsTable">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
+            <div class="form-group">
+                <label>الفئة *</label>
+                <input type="text" id="newItemCategory" placeholder="مثال: كيماويات، قطع غيار">
+            </div>
+            <div class="form-group">
+                <label>الوحدة</label>
+                <select id="newItemUnit">
+                    <option value="قطعة">قطعة</option>
+                    <option value="كجم">كجم</option>
+                    <option value="لتر">لتر</option>
+                    <option value="متر">متر</option>
+                    <option value="علبة">علبة</option>
+                    <option value="كرتونة">كرتونة</option>
+                    <option value="طن">طن</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>الكمية الحالية</label>
+                <input type="number" id="newItemQty" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label>الحد الادنى</label>
+                <input type="number" id="newItemMin" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label>سعر الوحدة (LE)</label>
+                <input type="number" id="newItemCost" value="0" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>الموقع</label>
+                <input type="text" id="newItemLocation" placeholder="مثال: رف A1">
+            </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+                <label>ملاحظات</label>
+                <input type="text" id="newItemNotes" placeholder="ملاحظات اضافية">
             </div>
         </div>
-    </div>
-
-    <!-- Tab 3: Low Stock Alerts -->
-    <div id="tab-alerts" class="tab-content">
-        <div class="section-card">
-            <div class="section-header">
-                <h2 class="section-title">⚠️ {{ t.items_running_low }}</h2>
-            </div>
-
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>{{ t.product }}</th>
-                            <th>{{ t.current_stock }}</th>
-                            <th>{{ t.minimum_level }}</th>
-                            <th>{{ t.deficit }}</th>
-                            <th>{{ t.status }}</th>
-                            <th>{{ t.actions }}</th>
-                        </tr>
-                    </thead>
-                    <tbody id="alertsTable">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="btn btn-primary" onclick="addItem()">حفظ</button>
+            <button class="btn" style="background:#e5e7eb;" onclick="closeModal('addItemModal')">الغاء</button>
         </div>
     </div>
 </div>
 
-<!-- Adjust Stock Modal -->
+<!-- ADJUST STOCK MODAL -->
 <div class="modal" id="adjustModal">
     <div class="modal-content">
-        <div class="modal-header">{{ t.adjust_stock }}</div>
-        <form id="adjustForm" onsubmit="submitAdjustment(event)">
+        <div class="modal-title" id="adjustTitle">تعديل الكمية</div>
+        <input type="hidden" id="adjustItemId">
+        <div class="form-grid">
             <div class="form-group">
-                <label>{{ t.product }} *</label>
-                <select name="product_id" required id="productSelect">
-                    <option value="">{{ t.select }}...</option>
-                    <!-- Populated by JavaScript -->
+                <label>نوع الحركة</label>
+                <select id="adjustType">
+                    <option value="in">اضافة (وارد)</option>
+                    <option value="out">صرف (منصرف)</option>
+                    <option value="set">تحديد الكمية</option>
                 </select>
             </div>
-            
             <div class="form-group">
-                <label>{{ t.movement_type }} *</label>
-                <select name="movement_type" required>
-                    <option value="in">{{ t.stock_in }} (+)</option>
-                    <option value="out">{{ t.stock_out }} (-)</option>
-                    <option value="adjustment">{{ t.adjustment }}</option>
+                <label>الكمية</label>
+                <input type="number" id="adjustQty" value="1" min="0" step="0.01">
+            </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+                <label>ملاحظات</label>
+                <input type="text" id="adjustNotes" placeholder="سبب التعديل">
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="btn btn-success" onclick="submitAdjust()">حفظ</button>
+            <button class="btn" style="background:#e5e7eb;" onclick="closeModal('adjustModal')">الغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT ITEM MODAL -->
+<div class="modal" id="editItemModal">
+    <div class="modal-content">
+        <div class="modal-title">تعديل الصنف</div>
+        <input type="hidden" id="editItemId">
+        <div class="form-grid">
+            <div class="form-group" style="grid-column: 1/-1;">
+                <label>اسم الصنف *</label>
+                <input type="text" id="editItemName">
+            </div>
+            <div class="form-group">
+                <label>الفئة</label>
+                <input type="text" id="editItemCategory">
+            </div>
+            <div class="form-group">
+                <label>الوحدة</label>
+                <select id="editItemUnit">
+                    <option value="قطعة">قطعة</option>
+                    <option value="كجم">كجم</option>
+                    <option value="لتر">لتر</option>
+                    <option value="متر">متر</option>
+                    <option value="علبة">علبة</option>
+                    <option value="كرتونة">كرتونة</option>
+                    <option value="طن">طن</option>
                 </select>
             </div>
-            
             <div class="form-group">
-                <label>{{ t.quantity }} *</label>
-                <input type="number" name="quantity" step="0.01" required>
+                <label>الحد الادنى</label>
+                <input type="number" id="editItemMin" min="0">
             </div>
-            
             <div class="form-group">
-                <label>{{ t.notes }}</label>
-                <textarea name="notes" rows="3"></textarea>
+                <label>سعر الوحدة (LE)</label>
+                <input type="number" id="editItemCost" min="0" step="0.01">
             </div>
-            
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="btn btn-primary" style="flex: 1;">
-                    💾 {{ t.save }}
-                </button>
-                <button type="button" class="btn btn-danger" style="flex: 1;" onclick="closeModal('adjustModal')">
-                    ❌ {{ t.cancel }}
-                </button>
+            <div class="form-group">
+                <label>الموقع</label>
+                <input type="text" id="editItemLocation">
             </div>
-        </form>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="btn btn-primary" onclick="submitEdit()">حفظ</button>
+            <button class="btn" style="background:#e5e7eb;" onclick="closeModal('editItemModal')">الغاء</button>
+        </div>
     </div>
 </div>
 
 <script>
-// Initialize
+let allItems = [];
+let activeCategory = 'all';
+
+// Initialize dates
+const today = new Date().toISOString().split('T')[0];
+const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+document.getElementById('movStart').value = firstDay;
+document.getElementById('movEnd').value = today;
+
+// Load on page load
 window.addEventListener('DOMContentLoaded', function() {
-    setDefaultDates();
-    loadSummary();
-    loadStock();
+    loadItems();
     loadMovements();
-    loadAlerts();
-    populateProductDropdown();
 });
 
-function setDefaultDates() {
-    const today = new Date().toISOString().split('T')[0];
-    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-    
-    document.getElementById('filterStartDate').value = firstDay;
-    document.getElementById('filterEndDate').value = today;
-}
-
-function switchTab(tabName) {
-    // Update tabs
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
-    
-    // Update content
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-' + tabName).classList.add('active');
-}
-
-function loadSummary() {
-    fetch('/api/stock/summary')
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('totalFlour').textContent = data.total_flour.toLocaleString();
-            document.getElementById('totalBran').textContent = data.total_bran.toLocaleString();
-            document.getElementById('totalBags').textContent = data.total_bags.toLocaleString();
-            document.getElementById('lowStockCount').textContent = data.low_stock_count;
-        })
-        .catch(err => console.error('Summary error:', err));
-}
-
-function loadStock() {
-    const productType = document.getElementById('filterProductType').value;
-    
-    fetch(`/api/stock?type=${productType}`)
-        .then(r => r.json())
-        .then(data => {
-            const grid = document.getElementById('stockGrid');
-            grid.innerHTML = '';
-            
-            data.products.forEach(product => {
-                const stockLevel = product.quantity >= product.min_level ? 'good' : 
-                                  product.quantity >= (product.min_level * 0.5) ? 'low' : 'critical';
-                const statusText = stockLevel === 'good' ? '✅ {{ t.ok }}' :
-                                  stockLevel === 'low' ? '⚠️ {{ t.low }}' : '🔴 {{ t.critical }}';
-                
-                const card = `
-                    <div class="stock-card">
-                        <h3>${product.product_name}</h3>
-                        <div class="stock-info"><strong>{{ t.code }}:</strong> ${product.product_code}</div>
-                        <div class="stock-info"><strong>{{ t.category }}:</strong> ${product.category}</div>
-                        <div class="stock-quantity">${product.quantity.toLocaleString()} ${product.unit}</div>
-                        <div class="stock-info">
-                            {{ t.minimum }}: ${product.min_level} ${product.unit}
-                        </div>
-                        <div class="stock-status status-${stockLevel}">${statusText}</div>
-                        <div style="margin-top: 15px;">
-                            <button class="btn btn-primary btn-sm" onclick="adjustProduct(${product.id})">
-                                ➕➖ {{ t.adjust }}
-                            </button>
-                        </div>
-                    </div>
-                `;
-                grid.innerHTML += card;
-            });
-        })
-        .catch(err => console.error('Stock error:', err));
-}
-
-function loadMovements() {
-    const start = document.getElementById('filterStartDate').value;
-    const end = document.getElementById('filterEndDate').value;
-    const type = document.getElementById('filterMovementType').value;
-    
-    fetch(`/api/stock/movements?start=${start}&end=${end}&type=${type}`)
-        .then(r => r.json())
-        .then(data => {
-            const tbody = document.getElementById('movementsTable');
-            tbody.innerHTML = '';
-            
-            data.movements.forEach(move => {
-                const typeIcon = move.movement_type === 'in' ? '⬆️' : 
-                                move.movement_type === 'out' ? '⬇️' : '↔️';
-                const qtyColor = move.movement_type === 'in' ? 'green' : 
-                                move.movement_type === 'out' ? 'red' : 'blue';
-                
-                const row = `
-                    <tr>
-                        <td>${move.movement_date}</td>
-                        <td>${move.product_name}</td>
-                        <td>${typeIcon} ${move.movement_type.toUpperCase()}</td>
-                        <td style="color: ${qtyColor}; font-weight: bold;">
-                            ${move.movement_type === 'out' ? '-' : '+'}${move.quantity}
-                        </td>
-                        <td>${move.balance_after.toLocaleString()}</td>
-                        <td>${move.notes || '-'}</td>
-                        <td>${move.created_by || '-'}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-        })
-        .catch(err => console.error('Movements error:', err));
-}
-
-function loadAlerts() {
-    fetch('/api/stock/alerts')
-        .then(r => r.json())
-        .then(data => {
-            const tbody = document.getElementById('alertsTable');
-            tbody.innerHTML = '';
-            
-            data.alerts.forEach(alert => {
-                const deficit = alert.min_level - alert.quantity;
-                const severity = alert.quantity === 0 ? 'critical' :
-                                alert.quantity < (alert.min_level * 0.5) ? 'critical' : 'low';
-                
-                const row = `
-                    <tr>
-                        <td>${alert.product_name}</td>
-                        <td style="font-weight: bold;">${alert.quantity} ${alert.unit}</td>
-                        <td>${alert.min_level} ${alert.unit}</td>
-                        <td style="color: red; font-weight: bold;">${deficit} ${alert.unit}</td>
-                        <td>
-                            <span class="stock-status status-${severity}">
-                                ${severity === 'critical' ? '🔴 {{ t.critical }}' : '⚠️ {{ t.low }}'}
-                            </span>
-                        </td>
-                        <td>
-                            <button class="btn btn-warning btn-sm" onclick="adjustProduct(${alert.id})">
-                                ➕ {{ t.restock }}
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-            
-            if (data.alerts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 30px;">✅ {{ t.all_stock_good }}</td></tr>';
-            }
-        })
-        .catch(err => console.error('Alerts error:', err));
-}
-
-function populateProductDropdown() {
+// ── LOAD ITEMS ──
+function loadItems() {
     fetch('/api/stock')
-        .then(r => r.json())
-        .then(data => {
-            const select = document.getElementById('productSelect');
-            data.products.forEach(product => {
-                const option = document.createElement('option');
-                option.value = product.id;
-                option.textContent = `${product.product_code} - ${product.product_name}`;
-                select.appendChild(option);
-            });
-        });
+    .then(r => r.json())
+    .then(data => {
+        allItems = data.products || [];
+        renderItems(allItems);
+        updateSummary(allItems);
+        buildCategoryTabs(allItems);
+    })
+    .catch(err => console.error('Error loading items:', err));
 }
 
-function showAdjustModal() {
-    document.getElementById('adjustModal').classList.add('active');
+function renderItems(items) {
+    const tbody = document.getElementById('itemsBody');
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="11" class="empty-state">لا توجد اصناف</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = items.map((item, i) => {
+        const total = (parseFloat(item.quantity) * parseFloat(item.unit_cost || 0)).toFixed(2);
+        const isLow = parseFloat(item.quantity) < parseFloat(item.min_level || 0);
+        const statusBadge = isLow
+            ? '<span class="badge badge-low">منخفض</span>'
+            : '<span class="badge badge-ok">جيد</span>';
+
+        return `<tr data-category="${item.category || ''}">
+            <td>${i + 1}</td>
+            <td><strong>${item.product_name || '-'}</strong></td>
+            <td>${item.category || '-'}</td>
+            <td>${parseFloat(item.quantity || 0).toLocaleString()}</td>
+            <td>${item.unit || '-'}</td>
+            <td>${parseFloat(item.min_level || 0).toLocaleString()}</td>
+            <td>LE ${parseFloat(item.unit_cost || 0).toLocaleString()}</td>
+            <td>LE ${parseFloat(total).toLocaleString()}</td>
+            <td>${item.location || '-'}</td>
+            <td>${statusBadge}</td>
+            <td>
+                <button class="btn btn-success btn-sm" onclick="openAdjust(${item.id}, '${item.product_name}')">
+                    +/- كمية
+                </button>
+                <button class="btn btn-warning btn-sm" onclick="openEdit(${item.id})">
+                    تعديل
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id}, '${item.product_name}')">
+                    حذف
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
+function updateSummary(items) {
+    document.getElementById('totalItems').textContent = items.length;
+    const totalValue = items.reduce((s, i) => s + (parseFloat(i.quantity) * parseFloat(i.unit_cost || 0)), 0);
+    document.getElementById('totalValue').textContent = 'LE ' + totalValue.toLocaleString(undefined, {maximumFractionDigits: 0});
+    const lowCount = items.filter(i => parseFloat(i.quantity) < parseFloat(i.min_level || 0)).length;
+    document.getElementById('lowStockCount').textContent = lowCount;
+    const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
+    document.getElementById('totalCategories').textContent = categories.length;
 }
 
-function adjustProduct(productId) {
-    document.getElementById('productSelect').value = productId;
-    showAdjustModal();
+function buildCategoryTabs(items) {
+    const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
+    const tabsDiv = document.getElementById('categoryTabs');
+    tabsDiv.innerHTML = '<button class="tab-btn active" onclick="filterByCategory(\'all\', this)">الكل</button>';
+    categories.forEach(cat => {
+        tabsDiv.innerHTML += `<button class="tab-btn" onclick="filterByCategory('${cat}', this)">${cat}</button>`;
+    });
 }
 
-function submitAdjustment(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    const data = Object.fromEntries(formData);
-    
+function filterByCategory(category, btn) {
+    activeCategory = category;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+}
+
+function filterItems() {
+    applyFilters();
+}
+
+function applyFilters() {
+    const search = document.getElementById('searchBox').value.toLowerCase();
+    let filtered = allItems;
+    if (activeCategory !== 'all') {
+        filtered = filtered.filter(i => i.category === activeCategory);
+    }
+    if (search) {
+        filtered = filtered.filter(i =>
+            (i.product_name || '').toLowerCase().includes(search) ||
+            (i.category || '').toLowerCase().includes(search) ||
+            (i.location || '').toLowerCase().includes(search)
+        );
+    }
+    renderItems(filtered);
+}
+
+// ── ADD ITEM ──
+function addItem() {
+    const name = document.getElementById('newItemName').value.trim();
+    const category = document.getElementById('newItemCategory').value.trim();
+    if (!name) { alert('اسم الصنف مطلوب'); return; }
+
+    fetch('/api/stock/item', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            product_name: name,
+            category: category,
+            unit: document.getElementById('newItemUnit').value,
+            quantity: parseFloat(document.getElementById('newItemQty').value) || 0,
+            min_level: parseFloat(document.getElementById('newItemMin').value) || 0,
+            unit_cost: parseFloat(document.getElementById('newItemCost').value) || 0,
+            location: document.getElementById('newItemLocation').value,
+            notes: document.getElementById('newItemNotes').value
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('addItemModal');
+            loadItems();
+            // Clear form
+            ['newItemName','newItemCategory','newItemQty','newItemMin','newItemCost','newItemLocation','newItemNotes']
+                .forEach(id => document.getElementById(id).value = '');
+        } else {
+            alert('خطأ: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => alert('خطأ في الاتصال: ' + err));
+}
+
+// ── ADJUST STOCK ──
+function openAdjust(id, name) {
+    document.getElementById('adjustItemId').value = id;
+    document.getElementById('adjustTitle').textContent = 'تعديل كمية: ' + name;
+    document.getElementById('adjustQty').value = 1;
+    document.getElementById('adjustNotes').value = '';
+    showModal('adjustModal');
+}
+
+function submitAdjust() {
+    const id = document.getElementById('adjustItemId').value;
+    const type = document.getElementById('adjustType').value;
+    const qty = parseFloat(document.getElementById('adjustQty').value);
+    const notes = document.getElementById('adjustNotes').value;
+
+    if (!qty || qty < 0) { alert('الكمية يجب ان تكون اكبر من صفر'); return; }
+
     fetch('/api/stock/adjust', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
+        body: JSON.stringify({product_id: id, movement_type: type, quantity: qty, notes: notes})
     })
     .then(r => r.json())
-    .then(result => {
-        if (result.success) {
+    .then(data => {
+        if (data.success) {
             closeModal('adjustModal');
-            event.target.reset();
-            loadSummary();
-            loadStock();
+            loadItems();
             loadMovements();
-            loadAlerts();
-            alert('{{ t.stock_adjusted_successfully }}!');
+        } else {
+            alert('خطأ: ' + (data.error || 'Unknown error'));
         }
     })
-    .catch(err => console.error('Submit error:', err));
+    .catch(err => alert('خطأ: ' + err));
 }
+
+// ── EDIT ITEM ──
+function openEdit(id) {
+    const item = allItems.find(i => i.id === id);
+    if (!item) return;
+    document.getElementById('editItemId').value = id;
+    document.getElementById('editItemName').value = item.product_name || '';
+    document.getElementById('editItemCategory').value = item.category || '';
+    document.getElementById('editItemUnit').value = item.unit || 'قطعة';
+    document.getElementById('editItemMin').value = item.min_level || 0;
+    document.getElementById('editItemCost').value = item.unit_cost || 0;
+    document.getElementById('editItemLocation').value = item.location || '';
+    showModal('editItemModal');
+}
+
+function submitEdit() {
+    const id = document.getElementById('editItemId').value;
+    fetch(`/api/stock/item/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            product_name: document.getElementById('editItemName').value,
+            category: document.getElementById('editItemCategory').value,
+            unit: document.getElementById('editItemUnit').value,
+            min_level: parseFloat(document.getElementById('editItemMin').value) || 0,
+            unit_cost: parseFloat(document.getElementById('editItemCost').value) || 0,
+            location: document.getElementById('editItemLocation').value
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('editItemModal');
+            loadItems();
+        } else {
+            alert('خطأ: ' + (data.error || 'Unknown'));
+        }
+    });
+}
+
+// ── DELETE ITEM ──
+function deleteItem(id, name) {
+    if (!confirm('هل انت متاكد من حذف: ' + name + '?')) return;
+    fetch(`/api/stock/item/${id}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadItems();
+        } else {
+            alert('خطأ: ' + (data.error || 'Unknown'));
+        }
+    });
+}
+
+// ── MOVEMENTS ──
+function loadMovements() {
+    const start = document.getElementById('movStart').value;
+    const end = document.getElementById('movEnd').value;
+    fetch(`/api/stock/movements?start=${start}&end=${end}`)
+    .then(r => r.json())
+    .then(data => {
+        const tbody = document.getElementById('movementsBody');
+        const movements = data.movements || [];
+        if (!movements.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">لا توجد حركات في هذه الفترة</td></tr>';
+            return;
+        }
+        tbody.innerHTML = movements.map(m => `
+            <tr>
+                <td>${m.movement_date || '-'}</td>
+                <td>${m.product_name || '-'}</td>
+                <td>
+                    <span class="badge ${m.movement_type === 'in' ? 'badge-ok' : m.movement_type === 'out' ? 'badge-low' : 'badge-high'}">
+                        ${m.movement_type === 'in' ? 'وارد' : m.movement_type === 'out' ? 'منصرف' : 'تعديل'}
+                    </span>
+                </td>
+                <td>${parseFloat(m.quantity || 0).toLocaleString()} ${m.unit || ''}</td>
+                <td>${parseFloat(m.balance_before || 0).toLocaleString()}</td>
+                <td>${parseFloat(m.balance_after || 0).toLocaleString()}</td>
+                <td>${m.notes || '-'}</td>
+                <td>${m.created_by || '-'}</td>
+            </tr>
+        `).join('');
+    })
+    .catch(err => console.error('Movements error:', err));
+}
+
+// ── MODAL HELPERS ──
+function showModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// Close modal on background click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
+    });
+});
 </script>
 
 {% endblock %}
