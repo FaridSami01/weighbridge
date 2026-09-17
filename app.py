@@ -1715,6 +1715,189 @@ def vendors():
         print(f"Unhandled error: {e}")
         return render_template("vendors.html", vendors=[])
 
+@app.route("/flour_sales")
+@login_required
+def flour_sales():
+    return render_template("flour_sales.html")
+
+
+@app.route("/api/flour_sales/export")
+@login_required
+def export_flour_sales():
+    """Generate Excel file matching the exact format of the daily flour sales sheet"""
+    import json
+    from openpyxl import Workbook
+    from openpyxl.styles import (Font, Alignment, PatternFill, Border, Side,
+                                  GradientFill)
+    from openpyxl.utils import get_column_letter
+    from io import BytesIO
+
+    date_str = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+    data_raw = request.args.get('data', '[]')
+
+    try:
+        invoices = json.loads(data_raw)
+    except Exception:
+        return jsonify({'error': 'Invalid data'}), 400
+
+    # Format date for title
+    try:
+        d = datetime.strptime(date_str, '%Y-%m-%d')
+        date_ar = d.strftime('%Y/%m/%d')
+    except Exception:
+        date_ar = date_str
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = date_str.replace('-', '/')
+    ws.sheet_view.rightToLeft = True
+
+    # ── STYLES ──
+    header_font = Font(name='Arial', bold=True, size=11)
+    title_font  = Font(name='Arial', bold=True, size=13)
+    data_font   = Font(name='Arial', size=10)
+    total_font  = Font(name='Arial', bold=True, size=11)
+
+    header_fill = PatternFill("solid", fgColor="1e3c72")
+    total_fill  = PatternFill("solid", fgColor="dbeafe")
+    due_fill    = PatternFill("solid", fgColor="bbf7d0")
+
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    right  = Alignment(horizontal='right',  vertical='center')
+
+    thin  = Side(style='thin')
+    thick = Side(style='medium')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    thick_border = Border(left=thick, right=thick, top=thick, bottom=thick)
+
+    # ── ROW 1: Title ──
+    ws.merge_cells('A1:K1')
+    ws['A1'] = f'مبيعات الدقيق لتاريخ  {date_ar}'
+    ws['A1'].font = title_font
+    ws['A1'].alignment = center
+    ws['A1'].fill = PatternFill("solid", fgColor="e0f2fe")
+    ws.row_dimensions[1].height = 25
+
+    # ── ROW 2: Headers ──
+    headers = [
+        'رقم الفاتورة',
+        'كمية الدقيق بالشكارة',
+        'قيمة الدقيق',
+        'كمية النخالة الناعمة بالكيلو جرام',
+        'قيمة النخالة الناعمة بالجنية',
+        'ك النخاله الناعمه الاضافى',
+        'ق النخاله الناعمه الاضافى',
+        'فوارغ النخالة الناعمة بالجنيه',
+        'الخدمة التموينية بالجنيه',
+        'النقابة بالجنيه',
+        'الاجمالى'
+    ]
+
+    for col, hdr in enumerate(headers, 1):
+        cell = ws.cell(row=2, column=col, value=hdr)
+        cell.font = Font(name='Arial', bold=True, size=10, color='FFFFFF')
+        cell.fill = header_fill
+        cell.alignment = center
+        cell.border = border
+
+    ws.row_dimensions[2].height = 40
+
+    # ── DATA ROWS ──
+    for row_idx, inv in enumerate(invoices, start=3):
+        col = 1
+        values = [
+            inv.get('num'),
+            inv.get('bags'),
+            None,                       # قيمة الدقيق (empty like original)
+            f'=B{row_idx}*1.5',         # نخالة ناعمة كجم
+            f'=D{row_idx}*4',           # قيمة النخالة
+            inv.get('extraBranKg', 0),  # نخالة اضافية كجم
+            f'=F{row_idx}*(235*20)/1000',  # ق نخالة اضافية
+            f'=IF(D{row_idx}<26.1,6,(IF(D{row_idx}<50.1,12,(IF(D{row_idx}<75.1,18,(IF(D{row_idx}<100.1,24,(IF(D{row_idx}<125.1,15,30)))))))))',
+            None,                       # خدمة تموينية
+            inv.get('union', 0) or None,
+            f'=H{row_idx}+G{row_idx}+E{row_idx}+C{row_idx}+J{row_idx}+I{row_idx}'
+        ]
+
+        for c, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=c, value=val)
+            cell.font = data_font
+            cell.alignment = center
+            cell.border = border
+
+    # ── TOTALS ROW ──
+    last_data_row = len(invoices) + 2
+    total_row = last_data_row + 1
+    load_row  = total_row + 1
+    due_row   = load_row + 1
+
+    # اجمالي
+    ws.merge_cells(f'A{total_row}:A{total_row}')
+    ws.cell(row=total_row, column=1, value='الاجمالي').font = total_font
+    ws.cell(row=total_row, column=1).alignment = center
+    ws.cell(row=total_row, column=1).fill = total_fill
+
+    for c in range(2, 12):
+        col_letter = get_column_letter(c)
+        cell = ws.cell(
+            row=total_row, column=c,
+            value=f'=SUM({col_letter}3:{col_letter}{last_data_row})'
+        )
+        cell.font = total_font
+        cell.alignment = center
+        cell.fill = total_fill
+        cell.border = border
+
+    # الحمولة
+    ws.merge_cells(f'A{load_row}:J{load_row}')
+    ws.cell(row=load_row, column=1, value='الحمولة').font = total_font
+    ws.cell(row=load_row, column=1).alignment = center
+    ws.cell(row=load_row, column=1).fill = total_fill
+
+    load_total_col = get_column_letter(11)
+    ws.cell(row=load_row, column=11, value=f'=B{total_row}/8').font = total_font
+    ws.cell(row=load_row, column=11).alignment = center
+    ws.cell(row=load_row, column=11).fill = total_fill
+
+    # المستحق
+    ws.merge_cells(f'A{due_row}:J{due_row}')
+    ws.cell(row=due_row, column=1, value='المستحق').font = Font(name='Arial', bold=True, size=12)
+    ws.cell(row=due_row, column=1).alignment = center
+    ws.cell(row=due_row, column=1).fill = due_fill
+
+    ws.cell(row=due_row, column=11,
+            value=f'=SUM(K{total_row}:K{load_row})').font = Font(name='Arial', bold=True, size=12)
+    ws.cell(row=due_row, column=11).alignment = center
+    ws.cell(row=due_row, column=11).fill = due_fill
+
+    # Apply borders to footer rows
+    for row_num in [total_row, load_row, due_row]:
+        for c in range(1, 12):
+            ws.cell(row=row_num, column=c).border = border
+
+    # ── COLUMN WIDTHS ──
+    col_widths = [14, 14, 12, 20, 20, 16, 16, 20, 18, 14, 12]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    # ── FREEZE PANES ──
+    ws.freeze_panes = 'A3'
+
+    # ── AUTO FILTER ──
+    ws.auto_filter.ref = f'A2:K{last_data_row}'
+
+    # ── OUTPUT ──
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f'flour_sales_{date_str}.xlsx'
+    response = make_response(output.read())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    return response
+
+
 @app.route("/reports")
 @login_required
 @block_weighbridge_operator
@@ -2750,104 +2933,6 @@ def api_stock_adjust():
     except Exception as e:
         print(f"Error adjusting stock: {e}")
         return jsonify({'error': str(e)}), 500
-
-@app.route("/api/stock/item", methods=["POST"])
-@login_required
-def api_stock_add_item():
-    """Add a new store item"""
-    try:
-        data = request.get_json()
-        product_name = data.get('product_name', '').strip()
-        if not product_name:
-            return jsonify({'success': False, 'error': 'Product name required'}), 400
-
-        with get_db() as conn:
-            cursor = conn.cursor()
-            # Generate product code
-            cursor.execute("SELECT COUNT(*) as cnt FROM stock_products")
-            count = cursor.fetchone()[0]
-            product_code = f"STR{str(count + 1).zfill(4)}"
-
-            cursor.execute("""
-                INSERT INTO stock_products 
-                (product_code, product_name, category, unit, quantity, min_level, max_level, unit_cost, location)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                product_code,
-                product_name,
-                data.get('category', 'عام'),
-                data.get('unit', 'قطعة'),
-                float(data.get('quantity', 0)),
-                float(data.get('min_level', 0)),
-                float(data.get('max_level', 9999)),
-                float(data.get('unit_cost', 0)),
-                data.get('location', '')
-            ))
-
-            # Record initial stock movement if quantity > 0
-            if float(data.get('quantity', 0)) > 0:
-                item_id = cursor.lastrowid
-                qty = float(data.get('quantity', 0))
-                cursor.execute("""
-                    INSERT INTO stock_movements 
-                    (product_id, movement_type, quantity, balance_before, balance_after,
-                     movement_date, movement_time, notes, created_by)
-                    VALUES (%s, 'in', %s, 0, %s, CURDATE(), CURTIME(), %s, %s)
-                """, (item_id, qty, qty, 'رصيد افتتاحي', session.get('username')))
-
-            conn.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error adding item: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route("/api/stock/item/<int:item_id>", methods=["PUT"])
-@login_required
-def api_stock_edit_item(item_id):
-    """Edit a store item"""
-    try:
-        data = request.get_json()
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE stock_products 
-                SET product_name=%s, category=%s, unit=%s,
-                    min_level=%s, unit_cost=%s, location=%s
-                WHERE id=%s
-            """, (
-                data.get('product_name'),
-                data.get('category'),
-                data.get('unit'),
-                float(data.get('min_level', 0)),
-                float(data.get('unit_cost', 0)),
-                data.get('location', ''),
-                item_id
-            ))
-            conn.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error editing item: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route("/api/stock/item/<int:item_id>", methods=["DELETE"])
-@login_required
-def api_stock_delete_item(item_id):
-    """Delete a store item"""
-    try:
-        if session.get('role') != 'ADMIN':
-            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM stock_movements WHERE product_id = %s", (item_id,))
-            cursor.execute("DELETE FROM stock_products WHERE id = %s", (item_id,))
-            conn.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error deleting item: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 
 # ============================================================================
 # BX-3 PACKING SCALE ROUTES
