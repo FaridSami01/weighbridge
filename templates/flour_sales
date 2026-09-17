@@ -1,0 +1,540 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+* { box-sizing: border-box; }
+body { direction: rtl; font-family: Arial, sans-serif; }
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 18px 22px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 12px;
+    color: white;
+}
+
+.page-title { font-size: 20px; font-weight: bold; margin: 0; }
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.card-title {
+    font-size: 15px;
+    font-weight: bold;
+    color: #1e3c72;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.btn {
+    padding: 9px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.btn-primary { background: #1e3c72; color: white; }
+.btn-primary:hover { background: #2a5298; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-danger  { background: #ef4444; color: white; }
+.btn-danger:hover { background: #dc2626; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-warning:hover { background: #d97706; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+.form-row {
+    display: grid;
+    grid-template-columns: 150px 120px 120px 1fr;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: bold;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: Arial, sans-serif;
+}
+
+.form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: #1e3c72;
+}
+
+.form-group input[readonly] {
+    background: #f8fafc;
+    color: #6b7280;
+}
+
+/* Summary cards */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.sum-card {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    border-top: 3px solid #1e3c72;
+}
+
+.sum-card .val { font-size: 22px; font-weight: bold; color: #1e3c72; }
+.sum-card .lbl { font-size: 11px; color: #6b7280; margin-top: 4px; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+
+thead th {
+    background: #1e3c72;
+    color: white;
+    padding: 9px 8px;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 11px;
+}
+
+tbody td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: center;
+}
+
+tbody tr:hover td { background: #f8fafc; }
+
+tfoot td {
+    padding: 9px 8px;
+    font-weight: bold;
+    background: #eff6ff;
+    border-top: 2px solid #1e3c72;
+    text-align: center;
+}
+
+.actions-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+@media (max-width: 700px) {
+    .form-row { grid-template-columns: 1fr 1fr; }
+}
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">📋 مبيعات الدقيق اليومية</h1>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <input type="date" id="salesDate" style="padding:7px 10px; border-radius:8px; border:none; font-size:13px;">
+        <button class="btn btn-warning" onclick="exportExcel()">📥 تحميل Excel</button>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-grid">
+    <div class="sum-card">
+        <div class="val" id="sumInvoices">0</div>
+        <div class="lbl">عدد الفواتير</div>
+    </div>
+    <div class="sum-card">
+        <div class="val" id="sumBags">0</div>
+        <div class="lbl">اجمالي الشكاير</div>
+    </div>
+    <div class="sum-card">
+        <div class="val" id="sumBranKg">0</div>
+        <div class="lbl">نخالة ناعمة (كجم)</div>
+    </div>
+    <div class="sum-card">
+        <div class="val" id="sumBranVal">0</div>
+        <div class="lbl">قيمة النخالة (LE)</div>
+    </div>
+    <div class="sum-card">
+        <div class="val" id="sumEmpties">0</div>
+        <div class="lbl">الفوارغ (LE)</div>
+    </div>
+    <div class="sum-card" style="border-top-color:#10b981;">
+        <div class="val" id="sumTotal" style="color:#059669;">0</div>
+        <div class="lbl">الاجمالي (LE)</div>
+    </div>
+</div>
+
+<!-- Add Invoice Form -->
+<div class="card">
+    <div class="card-title">➕ اضافة فاتورة</div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>رقم الفاتورة</label>
+            <input type="number" id="invoiceNum" placeholder="704842">
+        </div>
+        <div class="form-group">
+            <label>كمية الدقيق (شكارة)</label>
+            <input type="number" id="flourBags" min="1" placeholder="10" oninput="calcRow()">
+        </div>
+        <div class="form-group">
+            <label>نخالة اضافية (كجم)</label>
+            <input type="number" id="extraBran" min="0" value="0" oninput="calcRow()">
+        </div>
+        <div class="form-group">
+            <label>نقابة (LE)</label>
+            <input type="number" id="union" min="0" value="0" step="0.01">
+        </div>
+    </div>
+
+    <!-- Auto-calculated preview -->
+    <div style="background:#f0fdf4; border-radius:8px; padding:12px; margin-bottom:12px; display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:10px;">
+        <div>
+            <div style="font-size:11px; color:#6b7280;">نخالة ناعمة (كجم)</div>
+            <div style="font-weight:bold; color:#1e3c72;" id="prvBranKg">0</div>
+        </div>
+        <div>
+            <div style="font-size:11px; color:#6b7280;">قيمة النخالة (LE)</div>
+            <div style="font-weight:bold; color:#1e3c72;" id="prvBranVal">0</div>
+        </div>
+        <div>
+            <div style="font-size:11px; color:#6b7280;">ق. النخالة الاضافية</div>
+            <div style="font-weight:bold; color:#1e3c72;" id="prvExtraBranVal">0</div>
+        </div>
+        <div>
+            <div style="font-size:11px; color:#6b7280;">فوارغ النخالة (LE)</div>
+            <div style="font-weight:bold; color:#1e3c72;" id="prvEmpties">0</div>
+        </div>
+        <div>
+            <div style="font-size:11px; color:#6b7280;">الاجمالي (LE)</div>
+            <div style="font-size:18px; font-weight:bold; color:#059669;" id="prvTotal">0</div>
+        </div>
+    </div>
+
+    <div class="actions-row">
+        <button class="btn btn-success" onclick="addInvoice()">✅ اضافة</button>
+        <button class="btn" style="background:#e5e7eb;" onclick="clearForm()">مسح</button>
+        <span style="font-size:12px; color:#6b7280;">
+            * النخالة = شكاير × 1.5 | قيمة النخالة = كجم × 4 | فوارغ تبعاً لكمية النخالة
+        </span>
+    </div>
+</div>
+
+<!-- Invoices Table -->
+<div class="card">
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>📄 الفواتير</span>
+        <button class="btn btn-danger btn-sm" onclick="clearAll()">حذف الكل</button>
+    </div>
+
+    <div class="table-wrap">
+        <table id="invoicesTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>رقم الفاتورة</th>
+                    <th>كمية الدقيق<br>بالشكارة</th>
+                    <th>كمية النخالة الناعمة<br>بالكيلو جرام</th>
+                    <th>قيمة النخالة الناعمة<br>بالجنية</th>
+                    <th>ك. النخالة<br>الناعمة الاضافى</th>
+                    <th>ق. النخالة<br>الناعمة الاضافى</th>
+                    <th>فوارغ النخالة<br>الناعمة بالجنيه</th>
+                    <th>الخدمة التموينية<br>بالجنيه</th>
+                    <th>النقابة<br>بالجنيه</th>
+                    <th>الاجمالى</th>
+                    <th>حذف</th>
+                </tr>
+            </thead>
+            <tbody id="invoicesBody">
+                <tr id="emptyRow">
+                    <td colspan="12" style="text-align:center; padding:30px; color:#9ca3af;">
+                        لا توجد فواتير - اضف فاتورة بالنموذج اعلاه
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot id="invoicesFoot" style="display:none;">
+                <tr>
+                    <td colspan="2">الاجمالي</td>
+                    <td id="ftBags">0</td>
+                    <td id="ftBranKg">0</td>
+                    <td id="ftBranVal">0</td>
+                    <td id="ftExtraBranKg">0</td>
+                    <td id="ftExtraBranVal">0</td>
+                    <td id="ftEmpties">0</td>
+                    <td id="ftService">0</td>
+                    <td id="ftUnion">0</td>
+                    <td id="ftTotal">0</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td colspan="10">الحمولة</td>
+                    <td id="ftLoad">0</td>
+                    <td></td>
+                </tr>
+                <tr style="background:#dbeafe;">
+                    <td colspan="10">المستحق</td>
+                    <td id="ftDue">0</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<script>
+// ── STATE ──
+let invoices = [];
+let nextInvoiceNum = null;
+
+// Set today's date
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('salesDate').value = today;
+
+// Load saved data
+loadFromStorage();
+
+// ── CALCULATIONS ──
+function calcBranKg(bags) { return bags * 1.5; }
+function calcBranVal(branKg) { return branKg * 4; }
+function calcExtraBranVal(extraKg) { return extraKg * (235 * 20) / 1000; }
+function calcEmpties(branKg) {
+    if (branKg < 26.1) return 6;
+    if (branKg < 50.1) return 12;
+    if (branKg < 75.1) return 18;
+    if (branKg < 100.1) return 24;
+    if (branKg < 125.1) return 15;
+    return 30;
+}
+
+function calcTotal(branVal, extraBranVal, empties, flourVal, service, union) {
+    return (branVal || 0) + (extraBranVal || 0) + (empties || 0) +
+           (flourVal || 0) + (service || 0) + (union || 0);
+}
+
+function calcRow() {
+    const bags = parseFloat(document.getElementById('flourBags').value) || 0;
+    const extraKg = parseFloat(document.getElementById('extraBran').value) || 0;
+
+    const branKg = calcBranKg(bags);
+    const branVal = calcBranVal(branKg);
+    const extraBranVal = calcExtraBranVal(extraKg);
+    const empties = bags > 0 ? calcEmpties(branKg) : 0;
+    const total = calcTotal(branVal, extraBranVal, empties, 0, 0, 0);
+
+    document.getElementById('prvBranKg').textContent = branKg.toFixed(1);
+    document.getElementById('prvBranVal').textContent = branVal.toFixed(2);
+    document.getElementById('prvExtraBranVal').textContent = extraBranVal.toFixed(2);
+    document.getElementById('prvEmpties').textContent = empties;
+    document.getElementById('prvTotal').textContent = total.toFixed(2);
+}
+
+// ── ADD INVOICE ──
+function addInvoice() {
+    const invoiceNum = document.getElementById('invoiceNum').value;
+    const bags = parseFloat(document.getElementById('flourBags').value);
+    const extraKg = parseFloat(document.getElementById('extraBran').value) || 0;
+    const union = parseFloat(document.getElementById('union').value) || 0;
+
+    if (!invoiceNum) { alert('الرجاء ادخال رقم الفاتورة'); return; }
+    if (!bags || bags <= 0) { alert('الرجاء ادخال كمية الدقيق'); return; }
+
+    // Check for duplicate
+    if (invoices.find(i => i.num == invoiceNum)) {
+        alert('رقم الفاتورة موجود بالفعل!');
+        return;
+    }
+
+    const branKg = calcBranKg(bags);
+    const branVal = calcBranVal(branKg);
+    const extraBranVal = calcExtraBranVal(extraKg);
+    const empties = calcEmpties(branKg);
+    const total = calcTotal(branVal, extraBranVal, empties, 0, 0, union);
+
+    invoices.push({
+        num: parseInt(invoiceNum),
+        bags: bags,
+        flourVal: 0,
+        branKg: branKg,
+        branVal: branVal,
+        extraBranKg: extraKg,
+        extraBranVal: extraBranVal,
+        empties: empties,
+        service: 0,
+        union: union,
+        total: total
+    });
+
+    // Sort by invoice number
+    invoices.sort((a, b) => a.num - b.num);
+
+    // Auto-increment next invoice number
+    nextInvoiceNum = parseInt(invoiceNum) + 1;
+    document.getElementById('invoiceNum').value = nextInvoiceNum;
+    document.getElementById('flourBags').value = '';
+    document.getElementById('extraBran').value = 0;
+    document.getElementById('union').value = 0;
+    calcRow();
+
+    saveToStorage();
+    renderTable();
+    updateSummary();
+    document.getElementById('flourBags').focus();
+}
+
+// ── DELETE INVOICE ──
+function deleteInvoice(idx) {
+    if (!confirm('حذف هذه الفاتورة؟')) return;
+    invoices.splice(idx, 1);
+    saveToStorage();
+    renderTable();
+    updateSummary();
+}
+
+function clearAll() {
+    if (!invoices.length) return;
+    if (!confirm('حذف كل الفواتير؟')) return;
+    invoices = [];
+    saveToStorage();
+    renderTable();
+    updateSummary();
+}
+
+function clearForm() {
+    document.getElementById('invoiceNum').value = '';
+    document.getElementById('flourBags').value = '';
+    document.getElementById('extraBran').value = 0;
+    document.getElementById('union').value = 0;
+    calcRow();
+}
+
+// ── RENDER TABLE ──
+function renderTable() {
+    const tbody = document.getElementById('invoicesBody');
+    const tfoot = document.getElementById('invoicesFoot');
+    const emptyRow = document.getElementById('emptyRow');
+
+    if (!invoices.length) {
+        tbody.innerHTML = `<tr id="emptyRow"><td colspan="12" style="text-align:center; padding:30px; color:#9ca3af;">
+            لا توجد فواتير - اضف فاتورة بالنموذج اعلاه
+        </td></tr>`;
+        tfoot.style.display = 'none';
+        return;
+    }
+
+    tbody.innerHTML = invoices.map((inv, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td><strong>${inv.num}</strong></td>
+            <td>${inv.bags}</td>
+            <td>${inv.branKg.toFixed(1)}</td>
+            <td>${inv.branVal.toFixed(2)}</td>
+            <td>${inv.extraBranKg || 0}</td>
+            <td>${inv.extraBranVal.toFixed(2)}</td>
+            <td>${inv.empties}</td>
+            <td>${inv.service || 0}</td>
+            <td>${inv.union || 0}</td>
+            <td><strong style="color:#059669;">${inv.total.toFixed(2)}</strong></td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteInvoice(${i})">×</button>
+            </td>
+        </tr>
+    `).join('');
+
+    // Totals
+    const totBags = invoices.reduce((s, i) => s + i.bags, 0);
+    const totBranKg = invoices.reduce((s, i) => s + i.branKg, 0);
+    const totBranVal = invoices.reduce((s, i) => s + i.branVal, 0);
+    const totExtraKg = invoices.reduce((s, i) => s + (i.extraBranKg || 0), 0);
+    const totExtraVal = invoices.reduce((s, i) => s + i.extraBranVal, 0);
+    const totEmpties = invoices.reduce((s, i) => s + i.empties, 0);
+    const totService = invoices.reduce((s, i) => s + (i.service || 0), 0);
+    const totUnion = invoices.reduce((s, i) => s + (i.union || 0), 0);
+    const totTotal = invoices.reduce((s, i) => s + i.total, 0);
+    const load = totBags / 8;
+    const due = totTotal + load;
+
+    document.getElementById('ftBags').textContent = totBags;
+    document.getElementById('ftBranKg').textContent = totBranKg.toFixed(1);
+    document.getElementById('ftBranVal').textContent = totBranVal.toFixed(2);
+    document.getElementById('ftExtraBranKg').textContent = totExtraKg;
+    document.getElementById('ftExtraBranVal').textContent = totExtraVal.toFixed(2);
+    document.getElementById('ftEmpties').textContent = totEmpties;
+    document.getElementById('ftService').textContent = totService;
+    document.getElementById('ftUnion').textContent = totUnion;
+    document.getElementById('ftTotal').textContent = totTotal.toFixed(2);
+    document.getElementById('ftLoad').textContent = load.toFixed(2);
+    document.getElementById('ftDue').textContent = due.toFixed(2);
+
+    tfoot.style.display = '';
+}
+
+// ── SUMMARY CARDS ──
+function updateSummary() {
+    document.getElementById('sumInvoices').textContent = invoices.length;
+    document.getElementById('sumBags').textContent = invoices.reduce((s, i) => s + i.bags, 0);
+    document.getElementById('sumBranKg').textContent = invoices.reduce((s, i) => s + i.branKg, 0).toFixed(1);
+    document.getElementById('sumBranVal').textContent = invoices.reduce((s, i) => s + i.branVal, 0).toFixed(0);
+    document.getElementById('sumEmpties').textContent = invoices.reduce((s, i) => s + i.empties, 0);
+    document.getElementById('sumTotal').textContent = invoices.reduce((s, i) => s + i.total, 0).toFixed(0);
+}
+
+// ── LOCAL STORAGE ──
+function saveToStorage() {
+    const date = document.getElementById('salesDate').value;
+    localStorage.setItem('flourSales_' + date, JSON.stringify(invoices));
+    localStorage.setItem('flourSales_lastDate', date);
+}
+
+function loadFromStorage() {
+    const date = document.getElementById('salesDate').value;
+    const saved = localStorage.getItem('flourSales_' + date);
+    if (saved) {
+        invoices = JSON.parse(saved);
+        renderTable();
+        updateSummary();
+    }
+}
+
+// Reload when date changes
+document.getElementById('salesDate').addEventListener('change', function() {
+    invoices = [];
+    loadFromStorage();
+    renderTable();
+    updateSummary();
+});
+
+// ── EXPORT TO EXCEL ──
+function exportExcel() {
+    if (!invoices.length) {
+        alert('لا توجد فواتير للتصدير');
+        return;
+    }
+    const date = document.getElementById('salesDate').value;
+    window.location.href = `/api/flour_sales/export?date=${date}&data=${encodeURIComponent(JSON.stringify(invoices))}`;
+}
+</script>
+
+{% endblock %}
