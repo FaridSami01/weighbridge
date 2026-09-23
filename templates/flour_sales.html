@@ -262,22 +262,6 @@ tfoot td {
             <label>كمية الدقيق (شكارة)</label>
             <input type="number" id="flourBags" min="1" placeholder="10" oninput="calcRow()">
         </div>
-        <div class="form-group">
-            <label>نخالة اضافية (كجم)</label>
-            <input type="number" id="extraBran" min="0" value="0" oninput="calcRow()">
-        </div>
-        <div class="form-group">
-            <label>قيمة الدقيق (LE)</label>
-            <input type="number" id="flourVal" min="0" value="0" step="0.01" oninput="calcRow()">
-        </div>
-        <div class="form-group">
-            <label>الخدمة التموينية (LE)</label>
-            <input type="number" id="service" min="0" value="0" step="0.01" oninput="calcRow()">
-        </div>
-        <div class="form-group">
-            <label>نقابة (LE)</label>
-            <input type="number" id="union" min="0" value="0" step="0.01" oninput="calcRow()">
-        </div>
     </div>
 
     <!-- Auto-calculated preview -->
@@ -297,6 +281,10 @@ tfoot td {
         <div>
             <div style="font-size:11px; color:#6b7280;">فوارغ النخالة (LE)</div>
             <div style="font-weight:bold; color:#1e3c72;" id="prvEmpties">0</div>
+        </div>
+        <div>
+            <div style="font-size:11px; color:#6b7280;">الحمولة</div>
+            <div style="font-weight:bold; color:#1e3c72;" id="prvLoad">0</div>
         </div>
         <div>
             <div style="font-size:11px; color:#6b7280;">الاجمالي (LE)</div>
@@ -489,10 +477,7 @@ function calcEmpties(branKg) {
 
 function calcRow() {
     const bags    = parseFloat(document.getElementById('flourBags').value) || 0;
-    const extraKg = parseFloat(document.getElementById('extraBran').value) || 0;
-    const flourVal = parseFloat(document.getElementById('flourVal').value) || 0;
-    const service  = parseFloat(document.getElementById('service').value) || 0;
-    const union    = parseFloat(document.getElementById('union').value) || 0;
+    const extraKg = 0, flourVal = 0, service = 0, union = 0;
     const branKg      = calcBranKg(bags);
     const branVal     = calcBranVal(bags);
     const extraBranVal = calcExtraBranVal(extraKg);
@@ -502,6 +487,7 @@ function calcRow() {
     document.getElementById('prvBranVal').textContent     = branVal.toFixed(2);
     document.getElementById('prvExtraBranVal').textContent = extraBranVal.toFixed(2);
     document.getElementById('prvEmpties').textContent     = empties;
+    document.getElementById('prvLoad').textContent        = (bags / 8).toFixed(2);
     document.getElementById('prvTotal').textContent       = total.toFixed(2);
 }
 
@@ -513,10 +499,7 @@ function calcRow() {
 function addInvoice() {
     const invoiceNum = document.getElementById('invoiceNum').value;
     const bags    = parseFloat(document.getElementById('flourBags').value);
-    const extraKg = parseFloat(document.getElementById('extraBran').value) || 0;
-    const flourVal = parseFloat(document.getElementById('flourVal').value) || 0;
-    const service  = parseFloat(document.getElementById('service').value) || 0;
-    const union    = parseFloat(document.getElementById('union').value) || 0;
+    const extraKg = 0, flourVal = 0, service = 0, union = 0;
     const date = document.getElementById('salesDate').value;
 
     if (!invoiceNum) { alert('الرجاء ادخال رقم الفاتورة'); return; }
@@ -540,10 +523,6 @@ function addInvoice() {
 
         document.getElementById('invoiceNum').value = parseInt(invoiceNum) + 1;
         document.getElementById('flourBags').value  = '';
-        document.getElementById('extraBran').value  = 0;
-        document.getElementById('flourVal').value   = 0;
-        document.getElementById('service').value    = 0;
-        document.getElementById('union').value      = 0;
         calcRow();
         renderTable();
         updateSummary();
@@ -584,10 +563,6 @@ function clearAll() {
 function clearForm() {
     document.getElementById('invoiceNum').value = '';
     document.getElementById('flourBags').value  = '';
-    document.getElementById('extraBran').value  = 0;
-    document.getElementById('flourVal').value   = 0;
-    document.getElementById('service').value    = 0;
-    document.getElementById('union').value      = 0;
     calcRow();
 }
 
