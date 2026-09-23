@@ -57,7 +57,7 @@ body { direction: rtl; font-family: Arial, sans-serif; }
 
 .form-row {
     display: grid;
-    grid-template-columns: 150px 120px 120px 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px;
     align-items: end;
     margin-bottom: 12px;
@@ -174,21 +174,15 @@ tfoot td {
         </div>
 
         <div class="form-group">
-            <label>سعر النخالة الناعمة (LE لكل كجم)</label>
+            <label>سعر النخالة الناعمة (LE لكل شكارة)</label>
             <input type="number" id="stBranPrice" step="0.5" min="0" value="4" oninput="saveSettings(); calcRow();">
-            <small style="color:#6b7280;">الاصل: 4 LE لكل كجم</small>
+            <small style="color:#6b7280;">الاصل: 4 LE لكل شكارة (=B×4 في الملف الاصلي)</small>
         </div>
 
         <div class="form-group">
             <label>سعر النخالة الاضافية (235 × ؟) / 1000</label>
             <input type="number" id="stExtraBranRate" step="1" min="0" value="20" oninput="saveSettings(); calcRow();">
             <small style="color:#6b7280;">الاصل: 20 (يعني 235×20/1000)</small>
-        </div>
-
-        <div class="form-group">
-            <label>سعر قيمة الدقيق (LE لكل شكارة)</label>
-            <input type="number" id="stFlourPrice" step="0.5" min="0" value="0" oninput="saveSettings(); calcRow();">
-            <small style="color:#6b7280;">الاصل: 0 (فارغ في الملف الاصلي)</small>
         </div>
     </div>
 
@@ -273,8 +267,16 @@ tfoot td {
             <input type="number" id="extraBran" min="0" value="0" oninput="calcRow()">
         </div>
         <div class="form-group">
+            <label>قيمة الدقيق (LE)</label>
+            <input type="number" id="flourVal" min="0" value="0" step="0.01" oninput="calcRow()">
+        </div>
+        <div class="form-group">
+            <label>الخدمة التموينية (LE)</label>
+            <input type="number" id="service" min="0" value="0" step="0.01" oninput="calcRow()">
+        </div>
+        <div class="form-group">
             <label>نقابة (LE)</label>
-            <input type="number" id="union" min="0" value="0" step="0.01">
+            <input type="number" id="union" min="0" value="0" step="0.01" oninput="calcRow()">
         </div>
     </div>
 
@@ -306,7 +308,7 @@ tfoot td {
         <button class="btn btn-success" onclick="addInvoice()">✅ اضافة</button>
         <button class="btn" style="background:#e5e7eb;" onclick="clearForm()">مسح</button>
         <span style="font-size:12px; color:#6b7280;" id="formulaHint">
-            * النخالة = شكاير × 1.5 | قيمة النخالة = كجم × 4 | فوارغ تبعاً لكمية النخالة
+            * النخالة (كجم) = شكاير × 1.5 | قيمة النخالة = شكاير × 4 | فوارغ تبعاً لكمية النخالة (كجم)
         </span>
     </div>
 </div>
@@ -325,6 +327,7 @@ tfoot td {
                     <th>#</th>
                     <th>رقم الفاتورة</th>
                     <th>كمية الدقيق<br>بالشكارة</th>
+                    <th>قيمة الدقيق</th>
                     <th>كمية النخالة الناعمة<br>بالكيلو جرام</th>
                     <th>قيمة النخالة الناعمة<br>بالجنية</th>
                     <th>ك. النخالة<br>الناعمة الاضافى</th>
@@ -338,7 +341,7 @@ tfoot td {
             </thead>
             <tbody id="invoicesBody">
                 <tr id="emptyRow">
-                    <td colspan="12" style="text-align:center; padding:30px; color:#9ca3af;">
+                    <td colspan="13" style="text-align:center; padding:30px; color:#9ca3af;">
                         لا توجد فواتير - اضف فاتورة بالنموذج اعلاه
                     </td>
                 </tr>
@@ -347,6 +350,7 @@ tfoot td {
                 <tr>
                     <td colspan="2">الاجمالي</td>
                     <td id="ftBags">0</td>
+                    <td id="ftFlourVal">0</td>
                     <td id="ftBranKg">0</td>
                     <td id="ftBranVal">0</td>
                     <td id="ftExtraBranKg">0</td>
@@ -358,12 +362,12 @@ tfoot td {
                     <td></td>
                 </tr>
                 <tr>
-                    <td colspan="10">الحمولة</td>
+                    <td colspan="11">الحمولة</td>
                     <td id="ftLoad">0</td>
                     <td></td>
                 </tr>
                 <tr style="background:#dbeafe;">
-                    <td colspan="10">المستحق</td>
+                    <td colspan="11">المستحق</td>
                     <td id="ftDue">0</td>
                     <td></td>
                 </tr>
@@ -374,15 +378,15 @@ tfoot td {
 
 <script>
 // ── STATE ──
+// invoices/settings now live in the mill database (flour_sales /
+// flour_sales_settings tables) instead of localStorage, so they're shared
+// across machines and picked up by the existing hourly Railway sync.
 let invoices = [];
-let nextInvoiceNum = null;
 
-// ── SETTINGS ──
 const DEFAULT_SETTINGS = {
     branKgPerBag: 1.5,
     branPrice: 4,
     extraBranRate: 20,
-    flourPrice: 0,
     e1Limit: 26.1, e1Val: 6,
     e2Limit: 50.1, e2Val: 12,
     e3Limit: 75.1, e3Val: 18,
@@ -393,20 +397,10 @@ const DEFAULT_SETTINGS = {
 
 let settings = { ...DEFAULT_SETTINGS };
 
-function loadSettings() {
-    const saved = localStorage.getItem('flourSalesSettings');
-    if (saved) {
-        try { settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }; }
-        catch(e) { settings = { ...DEFAULT_SETTINGS }; }
-    }
-    applySettingsToForm();
-}
-
 function applySettingsToForm() {
     document.getElementById('stBranKgPerBag').value  = settings.branKgPerBag;
     document.getElementById('stBranPrice').value     = settings.branPrice;
     document.getElementById('stExtraBranRate').value = settings.extraBranRate;
-    document.getElementById('stFlourPrice').value    = settings.flourPrice;
     document.getElementById('stE1Limit').value = settings.e1Limit;
     document.getElementById('stE1Val').value   = settings.e1Val;
     document.getElementById('stE2Limit').value = settings.e2Limit;
@@ -427,7 +421,6 @@ function saveSettings() {
         branKgPerBag:  parseFloat(document.getElementById('stBranKgPerBag').value)  || 1.5,
         branPrice:     parseFloat(document.getElementById('stBranPrice').value)     || 4,
         extraBranRate: parseFloat(document.getElementById('stExtraBranRate').value) || 20,
-        flourPrice:    parseFloat(document.getElementById('stFlourPrice').value)    || 0,
         e1Limit: parseFloat(document.getElementById('stE1Limit').value) || 26.1,
         e1Val:   parseFloat(document.getElementById('stE1Val').value)   || 6,
         e2Limit: parseFloat(document.getElementById('stE2Limit').value) || 50.1,
@@ -440,22 +433,36 @@ function saveSettings() {
         e5Val:   parseFloat(document.getElementById('stE5Val').value)   || 15,
         e6Val:   parseFloat(document.getElementById('stE6Val').value)   || 30,
     };
-    localStorage.setItem('flourSalesSettings', JSON.stringify(settings));
-    applySettingsToForm();
-    recalcAllInvoices();
-    renderTable();
-    updateSummary();
-    alert('✅ تم حفظ الاعدادات!');
+    fetch('/api/flour_sales/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) { alert('فشل حفظ الاعدادات: ' + (res.error || '')); return; }
+        applySettingsToForm();
+        calcRow();
+        alert('✅ تم حفظ الاعدادات! (لن تُطبق بأثر رجعي على الفواتير المحفوظة سابقاً)');
+    })
+    .catch(err => alert('خطأ في حفظ الاعدادات: ' + err.message));
 }
 
 function resetSettings() {
     if (!confirm('استعادة الاعدادات الافتراضية؟')) return;
     settings = { ...DEFAULT_SETTINGS };
-    localStorage.removeItem('flourSalesSettings');
-    applySettingsToForm();
-    recalcAllInvoices();
-    renderTable();
-    updateSummary();
+    fetch('/api/flour_sales/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) { alert('فشل الاستعادة: ' + (res.error || '')); return; }
+        applySettingsToForm();
+        calcRow();
+    })
+    .catch(err => alert('خطأ: ' + err.message));
 }
 
 function toggleSettings() {
@@ -464,9 +471,12 @@ function toggleSettings() {
 }
 
 // ── CALCULATIONS ──
+// Matches flour_sales_August.xlsx exactly:
+//   D (بالكيلو) = B×1.5        E (بالجنيه) = B×4   <- NOT D×4, bags directly (verified against the source workbook)
+//   G = F×(235×20)/1000        H = bracket on D
+//   C (قيمة الدقيق), I (خدمة تموينية), J (نقابة) have no formula in the sheet - plain manual entries
 function calcBranKg(bags)      { return bags * settings.branKgPerBag; }
-function calcBranVal(branKg)   { return branKg * settings.branPrice; }
-function calcFlourVal(bags)    { return bags * settings.flourPrice; }
+function calcBranVal(bags)     { return bags * settings.branPrice; }
 function calcExtraBranVal(extraKg) { return extraKg * (235 * settings.extraBranRate) / 1000; }
 function calcEmpties(branKg) {
     if (branKg < settings.e1Limit) return settings.e1Val;
@@ -477,26 +487,17 @@ function calcEmpties(branKg) {
     return settings.e6Val;
 }
 
-function recalcAllInvoices() {
-    invoices = invoices.map(inv => {
-        const branKg       = calcBranKg(inv.bags);
-        const branVal      = calcBranVal(branKg);
-        const flourVal     = calcFlourVal(inv.bags);
-        const extraBranVal = calcExtraBranVal(inv.extraBranKg || 0);
-        const empties      = calcEmpties(branKg);
-        const total        = branVal + extraBranVal + empties + flourVal + (inv.union || 0) + (inv.service || 0);
-        return { ...inv, branKg, branVal, flourVal, extraBranVal, empties, total };
-    });
-}
-
 function calcRow() {
     const bags    = parseFloat(document.getElementById('flourBags').value) || 0;
     const extraKg = parseFloat(document.getElementById('extraBran').value) || 0;
+    const flourVal = parseFloat(document.getElementById('flourVal').value) || 0;
+    const service  = parseFloat(document.getElementById('service').value) || 0;
+    const union    = parseFloat(document.getElementById('union').value) || 0;
     const branKg      = calcBranKg(bags);
-    const branVal     = calcBranVal(branKg);
+    const branVal     = calcBranVal(bags);
     const extraBranVal = calcExtraBranVal(extraKg);
     const empties     = bags > 0 ? calcEmpties(branKg) : 0;
-    const total       = branVal + extraBranVal + empties;
+    const total       = branVal + extraBranVal + empties + flourVal + service + union;
     document.getElementById('prvBranKg').textContent      = branKg.toFixed(1);
     document.getElementById('prvBranVal').textContent     = branVal.toFixed(2);
     document.getElementById('prvExtraBranVal').textContent = extraBranVal.toFixed(2);
@@ -505,61 +506,87 @@ function calcRow() {
 }
 
 // ── ADD INVOICE ──
+// Saved straight to the database (POST /api/flour_sales). The server
+// recomputes branKg/branVal/extraBranVal/empties/total itself from the
+// current settings row, so the DB is the single source of truth - this
+// is just a live preview, not what actually gets stored.
 function addInvoice() {
     const invoiceNum = document.getElementById('invoiceNum').value;
-    const bags   = parseFloat(document.getElementById('flourBags').value);
+    const bags    = parseFloat(document.getElementById('flourBags').value);
     const extraKg = parseFloat(document.getElementById('extraBran').value) || 0;
-    const union  = parseFloat(document.getElementById('union').value) || 0;
+    const flourVal = parseFloat(document.getElementById('flourVal').value) || 0;
+    const service  = parseFloat(document.getElementById('service').value) || 0;
+    const union    = parseFloat(document.getElementById('union').value) || 0;
+    const date = document.getElementById('salesDate').value;
 
     if (!invoiceNum) { alert('الرجاء ادخال رقم الفاتورة'); return; }
     if (!bags || bags <= 0) { alert('الرجاء ادخال كمية الدقيق'); return; }
     if (invoices.find(i => i.num == invoiceNum)) { alert('رقم الفاتورة موجود بالفعل!'); return; }
 
-    const branKg       = calcBranKg(bags);
-    const branVal      = calcBranVal(branKg);
-    const flourVal     = calcFlourVal(bags);
-    const extraBranVal = calcExtraBranVal(extraKg);
-    const empties      = calcEmpties(branKg);
-    const total        = branVal + extraBranVal + empties + flourVal + union;
+    fetch('/api/flour_sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            date, num: parseInt(invoiceNum), bags,
+            extraBranKg: extraKg, flourVal, service, union
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) { alert('فشل حفظ الفاتورة: ' + (res.error || '')); return; }
 
-    invoices.push({
-        num: parseInt(invoiceNum),
-        bags, flourVal, branKg, branVal,
-        extraBranKg: extraKg, extraBranVal,
-        empties, service: 0, union, total
-    });
+        invoices.push(res.invoice);
+        invoices.sort((a, b) => a.num - b.num);
 
-    invoices.sort((a, b) => a.num - b.num);
-
-    document.getElementById('invoiceNum').value = parseInt(invoiceNum) + 1;
-    document.getElementById('flourBags').value  = '';
-    document.getElementById('extraBran').value  = 0;
-    document.getElementById('union').value      = 0;
-    calcRow();
-    saveToStorage();
-    renderTable();
-    updateSummary();
-    document.getElementById('flourBags').focus();
+        document.getElementById('invoiceNum').value = parseInt(invoiceNum) + 1;
+        document.getElementById('flourBags').value  = '';
+        document.getElementById('extraBran').value  = 0;
+        document.getElementById('flourVal').value   = 0;
+        document.getElementById('service').value    = 0;
+        document.getElementById('union').value      = 0;
+        calcRow();
+        renderTable();
+        updateSummary();
+        document.getElementById('flourBags').focus();
+    })
+    .catch(err => alert('خطأ في حفظ الفاتورة: ' + err.message));
 }
 
 // ── DELETE ──
-function deleteInvoice(idx) {
+function deleteInvoice(id) {
     if (!confirm('حذف هذه الفاتورة؟')) return;
-    invoices.splice(idx, 1);
-    saveToStorage(); renderTable(); updateSummary();
+    fetch(`/api/flour_sales/${id}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) { alert('فشل الحذف: ' + (res.error || '')); return; }
+        invoices = invoices.filter(i => i.id !== id);
+        renderTable();
+        updateSummary();
+    })
+    .catch(err => alert('خطأ في الحذف: ' + err.message));
 }
 
 function clearAll() {
     if (!invoices.length) return;
     if (!confirm('حذف كل الفواتير؟')) return;
-    invoices = [];
-    saveToStorage(); renderTable(); updateSummary();
+    const date = document.getElementById('salesDate').value;
+    fetch(`/api/flour_sales?date=${date}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) { alert('فشل الحذف: ' + (res.error || '')); return; }
+        invoices = [];
+        renderTable();
+        updateSummary();
+    })
+    .catch(err => alert('خطأ في الحذف: ' + err.message));
 }
 
 function clearForm() {
     document.getElementById('invoiceNum').value = '';
     document.getElementById('flourBags').value  = '';
     document.getElementById('extraBran').value  = 0;
+    document.getElementById('flourVal').value   = 0;
+    document.getElementById('service').value    = 0;
     document.getElementById('union').value      = 0;
     calcRow();
 }
@@ -570,7 +597,7 @@ function renderTable() {
     const tfoot = document.getElementById('invoicesFoot');
 
     if (!invoices.length) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:#9ca3af;">لا توجد فواتير - اضف فاتورة بالنموذج اعلاه</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;color:#9ca3af;">لا توجد فواتير - اضف فاتورة بالنموذج اعلاه</td></tr>';
         tfoot.style.display = 'none';
         return;
     }
@@ -580,6 +607,7 @@ function renderTable() {
             <td>${i+1}</td>
             <td><strong>${inv.num}</strong></td>
             <td>${inv.bags}</td>
+            <td>${(inv.flourVal || 0).toFixed(2)}</td>
             <td>${inv.branKg.toFixed(1)}</td>
             <td>${inv.branVal.toFixed(2)}</td>
             <td>${inv.extraBranKg || 0}</td>
@@ -588,10 +616,11 @@ function renderTable() {
             <td>${inv.service || 0}</td>
             <td>${inv.union || 0}</td>
             <td><strong style="color:#059669;">${inv.total.toFixed(2)}</strong></td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteInvoice(${i})">×</button></td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteInvoice(${inv.id})">×</button></td>
         </tr>`).join('');
 
     const totBags    = invoices.reduce((s,i) => s + i.bags, 0);
+    const totFlourVal= invoices.reduce((s,i) => s + (i.flourVal||0), 0);
     const totBranKg  = invoices.reduce((s,i) => s + i.branKg, 0);
     const totBranVal = invoices.reduce((s,i) => s + i.branVal, 0);
     const totExtraKg = invoices.reduce((s,i) => s + (i.extraBranKg||0), 0);
@@ -604,6 +633,7 @@ function renderTable() {
     const due  = totTotal + load;
 
     document.getElementById('ftBags').textContent      = totBags;
+    document.getElementById('ftFlourVal').textContent  = totFlourVal.toFixed(2);
     document.getElementById('ftBranKg').textContent    = totBranKg.toFixed(1);
     document.getElementById('ftBranVal').textContent   = totBranVal.toFixed(2);
     document.getElementById('ftExtraBranKg').textContent = totExtraKg;
@@ -627,33 +657,39 @@ function updateSummary() {
     document.getElementById('sumTotal').textContent    = invoices.reduce((s,i) => s+i.total, 0).toFixed(0);
 }
 
-// ── STORAGE ──
-function saveToStorage() {
+// ── LOAD DAY (from database) ──
+// One call gets both this date's invoices AND the current (shared,
+// editable) settings row, so switching dates never shows stale settings.
+function loadDay() {
     const date = document.getElementById('salesDate').value;
-    localStorage.setItem('flourSales_' + date, JSON.stringify(invoices));
+    fetch(`/api/flour_sales?date=${date}`)
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) { alert('فشل تحميل البيانات: ' + (res.error || '')); return; }
+        settings = { ...DEFAULT_SETTINGS, ...res.settings };
+        invoices = res.invoices;
+        applySettingsToForm();
+        calcRow();
+        renderTable();
+        updateSummary();
+    })
+    .catch(err => alert('خطأ في تحميل البيانات: ' + err.message));
 }
 
-function loadFromStorage() {
-    const date  = document.getElementById('salesDate').value;
-    const saved = localStorage.getItem('flourSales_' + date);
-    invoices = saved ? JSON.parse(saved) : [];
-    renderTable();
-    updateSummary();
-}
-
-document.getElementById('salesDate').addEventListener('change', loadFromStorage);
+document.getElementById('salesDate').addEventListener('change', loadDay);
 
 // ── EXPORT ──
+// Server reads straight from the database for this date - no need to
+// ship the invoices/settings through the request anymore.
 function exportExcel() {
     if (!invoices.length) { alert('لا توجد فواتير للتصدير'); return; }
     const date = document.getElementById('salesDate').value;
-    window.location.href = `/api/flour_sales/export?date=${date}&data=${encodeURIComponent(JSON.stringify(invoices))}`;
+    window.location.href = `/api/flour_sales/export?date=${date}`;
 }
 
 // ── INIT (always last) ──
 document.getElementById('salesDate').value = new Date().toISOString().split('T')[0];
-loadSettings();
-loadFromStorage();
+loadDay();
 </script>
 
 {% endblock %}
