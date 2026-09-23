@@ -833,14 +833,12 @@ def second_weighing():
                 # CORRECTED CALCULATIONS
                 code_weight = abs(first_weight - second_weight)  # كود الوزن = |First - Second|
                 total_weight = num_bags * bag_weight             # اجمالي الوزن = Bags × Weight
-                net_weight = code_weight                          # الصافي = same as كود الوزن
                 difference = abs(code_weight - total_weight)      # كود = difference
-                
-                # Update the intake record with second weighing data
+
+                # net_weight is a generated column (DB computes it) - don't write to it
                 cursor.execute("""
-                    UPDATE intake 
+                    UPDATE intake
                     SET second_weight = %s,
-                        net_weight = %s,
                         num_bags = %s,
                         bag_weight = %s,
                         code_weight = %s,
@@ -851,7 +849,6 @@ def second_weighing():
                     WHERE id = %s
                 """, (
                     second_weight,
-                    net_weight,      # الصافي
                     num_bags,
                     bag_weight,
                     code_weight,     # كود الوزن
@@ -1239,6 +1236,51 @@ def get_intake(intake_id):
             'success': False,
             'error': str(e)
         }), 500
+
+
+# API endpoint for the printable weighing receipt (Intake History -> Print button)
+@app.route("/api/intake/<int:intake_id>/receipt")
+@login_required
+def get_intake_receipt(intake_id):
+    """
+    JSON data used by intake_history.html's printIntakeReceipt() to build
+    the printable receipt window.
+    """
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT
+                    i.id,
+                    v.name as vendor_name,
+                    i.truck_number,
+                    i.trailer_number,
+                    i.governorate,
+                    i.load_type,
+                    i.wheat_type,
+                    i.num_bags,
+                    i.bag_weight,
+                    i.fine_bran_given as first_weight,
+                    i.second_weight,
+                    i.code_weight,
+                    i.net_weight,
+                    i.receiver_name,
+                    DATE_FORMAT(i.captured_at, '%%Y-%%m-%%d %%H:%%i') as captured_at
+                FROM intake i
+                LEFT JOIN vendors v ON i.vendor_id = v.id
+                WHERE i.id = %s
+            """, (intake_id,))
+
+            row = cursor.fetchone()
+
+            if row:
+                return jsonify({'success': True, 'data': row})
+            else:
+                return jsonify({'success': False, 'error': 'Intake entry not found'}), 404
+
+    except Exception as e:
+        print(f"Error fetching receipt for intake {intake_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # Packing scale API endpoint
@@ -1715,30 +1757,286 @@ def vendors():
         print(f"Unhandled error: {e}")
         return render_template("vendors.html", vendors=[])
 
+# ============================================================================
+# FLOUR SALES (daily invoice sheet - mirrors the old Excel workbook)
+# Persisted in MySQL (flour_sales / flour_sales_settings) instead of
+# localStorage, so it's shared across machines and covered by the existing
+# hourly Railway sync (sync_to_railway.py / sync_from_railway.py).
+# ============================================================================
+
+def _ensure_flour_sales_tables(conn):
+    """Idempotent - safe to call on every request. Also see
+    flour_sales_migration.sql for running this by hand instead."""
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS flour_sales (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            sale_date DATE NOT NULL,
+            invoice_num INT NOT NULL,
+            bags DECIMAL(10,2) NOT NULL DEFAULT 0,
+            flour_val DECIMAL(10,2) NOT NULL DEFAULT 0,
+            bran_kg DECIMAL(10,2) NOT NULL DEFAULT 0,
+            bran_val DECIMAL(10,2) NOT NULL DEFAULT 0,
+            extra_bran_kg DECIMAL(10,2) NOT NULL DEFAULT 0,
+            extra_bran_val DECIMAL(10,2) NOT NULL DEFAULT 0,
+            empties DECIMAL(10,2) NOT NULL DEFAULT 0,
+            service DECIMAL(10,2) NOT NULL DEFAULT 0,
+            union_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
+            total DECIMAL(10,2) NOT NULL DEFAULT 0,
+            created_by VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_date_invoice (sale_date, invoice_num)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS flour_sales_settings (
+            id INT PRIMARY KEY,
+            bran_kg_per_bag DECIMAL(6,2) NOT NULL DEFAULT 1.5,
+            bran_price      DECIMAL(6,2) NOT NULL DEFAULT 4,
+            extra_bran_rate DECIMAL(6,2) NOT NULL DEFAULT 20,
+            e1_limit DECIMAL(6,2) NOT NULL DEFAULT 26.1,  e1_val DECIMAL(6,2) NOT NULL DEFAULT 6,
+            e2_limit DECIMAL(6,2) NOT NULL DEFAULT 50.1,  e2_val DECIMAL(6,2) NOT NULL DEFAULT 12,
+            e3_limit DECIMAL(6,2) NOT NULL DEFAULT 75.1,  e3_val DECIMAL(6,2) NOT NULL DEFAULT 18,
+            e4_limit DECIMAL(6,2) NOT NULL DEFAULT 100.1, e4_val DECIMAL(6,2) NOT NULL DEFAULT 24,
+            e5_limit DECIMAL(6,2) NOT NULL DEFAULT 125.1, e5_val DECIMAL(6,2) NOT NULL DEFAULT 15,
+            e6_val   DECIMAL(6,2) NOT NULL DEFAULT 30
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """)
+    cur.execute("INSERT IGNORE INTO flour_sales_settings (id) VALUES (1)")
+    conn.commit()
+
+
+def _settings_row_to_dict(row):
+    return {
+        "branKgPerBag": float(row["bran_kg_per_bag"]),
+        "branPrice": float(row["bran_price"]),
+        "extraBranRate": float(row["extra_bran_rate"]),
+        "e1Limit": float(row["e1_limit"]), "e1Val": float(row["e1_val"]),
+        "e2Limit": float(row["e2_limit"]), "e2Val": float(row["e2_val"]),
+        "e3Limit": float(row["e3_limit"]), "e3Val": float(row["e3_val"]),
+        "e4Limit": float(row["e4_limit"]), "e4Val": float(row["e4_val"]),
+        "e5Limit": float(row["e5_limit"]), "e5Val": float(row["e5_val"]),
+        "e6Val": float(row["e6_val"]),
+    }
+
+
+def _calc_flour_row(s, bags, extra_kg):
+    """Mirrors flour_sales.html's calcBranKg/calcBranVal/calcExtraBranVal/
+    calcEmpties - kept in one place so a save always matches the preview.
+    NOTE: branVal = bags x rate (NOT branKg x rate) - verified against the
+    actual flour_sales_August.xlsx cached values (11 bags -> 44 LE, not 66)."""
+    bran_kg = bags * s["branKgPerBag"]
+    bran_val = bags * s["branPrice"]
+    extra_bran_val = extra_kg * (235 * s["extraBranRate"]) / 1000
+    if bran_kg < s["e1Limit"]: empties = s["e1Val"]
+    elif bran_kg < s["e2Limit"]: empties = s["e2Val"]
+    elif bran_kg < s["e3Limit"]: empties = s["e3Val"]
+    elif bran_kg < s["e4Limit"]: empties = s["e4Val"]
+    elif bran_kg < s["e5Limit"]: empties = s["e5Val"]
+    else: empties = s["e6Val"]
+    return bran_kg, bran_val, extra_bran_val, empties
+
+
+def _invoice_row_to_dict(row):
+    return {
+        "id": row["id"], "num": row["invoice_num"], "bags": float(row["bags"]),
+        "flourVal": float(row["flour_val"]), "branKg": float(row["bran_kg"]),
+        "branVal": float(row["bran_val"]), "extraBranKg": float(row["extra_bran_kg"]),
+        "extraBranVal": float(row["extra_bran_val"]), "empties": float(row["empties"]),
+        "service": float(row["service"]), "union": float(row["union_fee"]),
+        "total": float(row["total"]),
+    }
+
+
 @app.route("/flour_sales")
 @login_required
+@block_weighbridge_operator
 def flour_sales():
     return render_template("flour_sales.html")
 
 
+@app.route("/api/flour_sales")
+@login_required
+@block_weighbridge_operator
+def api_flour_sales_get():
+    """One date's invoices + the current (shared) settings row."""
+    date = request.args.get("date") or datetime.now().strftime("%Y-%m-%d")
+    try:
+        with get_db() as conn:
+            _ensure_flour_sales_tables(conn)
+            cur = conn.cursor(dictionary=True)
+            cur.execute("SELECT * FROM flour_sales_settings WHERE id = 1")
+            settings = _settings_row_to_dict(cur.fetchone())
+
+            cur.execute(
+                "SELECT * FROM flour_sales WHERE sale_date = %s ORDER BY invoice_num",
+                (date,)
+            )
+            invoices = [_invoice_row_to_dict(r) for r in cur.fetchall()]
+
+        return jsonify({"success": True, "settings": settings, "invoices": invoices})
+    except Exception as e:
+        print(f"Flour sales get error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/flour_sales", methods=["POST"])
+@login_required
+@block_weighbridge_operator
+def api_flour_sales_add():
+    """Add one invoice. Server recomputes the formula columns from the
+    current settings row rather than trusting the client's numbers."""
+    try:
+        payload = request.get_json(force=True) or {}
+        date = payload.get("date")
+        num = payload.get("num")
+        bags = float(payload.get("bags") or 0)
+        extra_kg = float(payload.get("extraBranKg") or 0)
+        flour_val = float(payload.get("flourVal") or 0)
+        service = float(payload.get("service") or 0)
+        union = float(payload.get("union") or 0)
+
+        if not date or not num or bags <= 0:
+            return jsonify({"success": False, "error": "Missing date/invoice number/bags"}), 400
+
+        with get_db() as conn:
+            _ensure_flour_sales_tables(conn)
+            cur = conn.cursor(dictionary=True)
+            cur.execute("SELECT * FROM flour_sales_settings WHERE id = 1")
+            settings = _settings_row_to_dict(cur.fetchone())
+
+            bran_kg, bran_val, extra_bran_val, empties = _calc_flour_row(settings, bags, extra_kg)
+            total = bran_val + extra_bran_val + empties + flour_val + service + union
+
+            cur.execute("""
+                INSERT INTO flour_sales
+                    (sale_date, invoice_num, bags, flour_val, bran_kg, bran_val,
+                     extra_bran_kg, extra_bran_val, empties, service, union_fee, total, created_by)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (date, num, bags, flour_val, bran_kg, bran_val,
+                  extra_kg, extra_bran_val, empties, service, union, total,
+                  session.get("user")))
+            new_id = cur.lastrowid
+            conn.commit()
+
+            cur.execute("SELECT * FROM flour_sales WHERE id = %s", (new_id,))
+            invoice = _invoice_row_to_dict(cur.fetchone())
+
+        return jsonify({"success": True, "invoice": invoice})
+    except mysql.connector.IntegrityError:
+        return jsonify({"success": False, "error": "رقم الفاتورة موجود بالفعل لهذا اليوم"}), 400
+    except Exception as e:
+        print(f"Flour sales add error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/flour_sales/<int:invoice_id>", methods=["DELETE"])
+@login_required
+@block_weighbridge_operator
+def api_flour_sales_delete(invoice_id):
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM flour_sales WHERE id = %s", (invoice_id,))
+            conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Flour sales delete error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/flour_sales", methods=["DELETE"])
+@login_required
+@block_weighbridge_operator
+def api_flour_sales_clear():
+    """Delete every invoice for one date (حذف الكل)."""
+    date = request.args.get("date")
+    if not date:
+        return jsonify({"success": False, "error": "Missing date"}), 400
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM flour_sales WHERE sale_date = %s", (date,))
+            conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Flour sales clear error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/flour_sales/settings", methods=["POST"])
+@login_required
+@block_weighbridge_operator
+def api_flour_sales_settings_save():
+    """Settings are shared/global (one row, id=1) - matches the single
+    Settings panel on the page. Does NOT retroactively change invoices
+    already saved; only affects new ones from here on."""
+    try:
+        s = request.get_json(force=True) or {}
+        with get_db() as conn:
+            _ensure_flour_sales_tables(conn)
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE flour_sales_settings SET
+                    bran_kg_per_bag=%s, bran_price=%s, extra_bran_rate=%s,
+                    e1_limit=%s, e1_val=%s, e2_limit=%s, e2_val=%s,
+                    e3_limit=%s, e3_val=%s, e4_limit=%s, e4_val=%s,
+                    e5_limit=%s, e5_val=%s, e6_val=%s
+                WHERE id = 1
+            """, (
+                s.get("branKgPerBag", 1.5), s.get("branPrice", 4), s.get("extraBranRate", 20),
+                s.get("e1Limit", 26.1), s.get("e1Val", 6),
+                s.get("e2Limit", 50.1), s.get("e2Val", 12),
+                s.get("e3Limit", 75.1), s.get("e3Val", 18),
+                s.get("e4Limit", 100.1), s.get("e4Val", 24),
+                s.get("e5Limit", 125.1), s.get("e5Val", 15),
+                s.get("e6Val", 30),
+            ))
+            conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Flour sales settings save error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/flour_sales/export")
 @login_required
+@block_weighbridge_operator
 def export_flour_sales():
-    """Generate Excel file matching the exact format of the daily flour sales sheet"""
-    import json
+    """Generate an Excel file matching the daily flour sales sheet, read
+    straight from the database (not the URL) for this date."""
     from openpyxl import Workbook
-    from openpyxl.styles import (Font, Alignment, PatternFill, Border, Side,
-                                  GradientFill)
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
     from io import BytesIO
 
     date_str = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
-    data_raw = request.args.get('data', '[]')
 
     try:
-        invoices = json.loads(data_raw)
-    except Exception:
-        return jsonify({'error': 'Invalid data'}), 400
+        with get_db() as conn:
+            _ensure_flour_sales_tables(conn)
+            cur = conn.cursor(dictionary=True)
+            cur.execute("SELECT * FROM flour_sales_settings WHERE id = 1")
+            s = _settings_row_to_dict(cur.fetchone())
+            cur.execute(
+                "SELECT * FROM flour_sales WHERE sale_date = %s ORDER BY invoice_num",
+                (date_str,)
+            )
+            invoices = [_invoice_row_to_dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        print(f"Flour sales export error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    if not invoices:
+        return jsonify({'success': False, 'error': 'No invoices to export'}), 400
+
+    bran_kg_per_bag, bran_rate, extra_bran_rate = s["branKgPerBag"], s["branPrice"], s["extraBranRate"]
+    e1l, e1v = s["e1Limit"], s["e1Val"]
+    e2l, e2v = s["e2Limit"], s["e2Val"]
+    e3l, e3v = s["e3Limit"], s["e3Val"]
+    e4l, e4v = s["e4Limit"], s["e4Val"]
+    e5l, e5v = s["e5Limit"], s["e5Val"]
+    e6v = s["e6Val"]
 
     # Format date for title
     try:
@@ -1753,7 +2051,6 @@ def export_flour_sales():
     ws.sheet_view.rightToLeft = True
 
     # ── STYLES ──
-    header_font = Font(name='Arial', bold=True, size=11)
     title_font  = Font(name='Arial', bold=True, size=13)
     data_font   = Font(name='Arial', size=10)
     total_font  = Font(name='Arial', bold=True, size=11)
@@ -1763,12 +2060,9 @@ def export_flour_sales():
     due_fill    = PatternFill("solid", fgColor="bbf7d0")
 
     center = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    right  = Alignment(horizontal='right',  vertical='center')
 
     thin  = Side(style='thin')
-    thick = Side(style='medium')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
-    thick_border = Border(left=thick, right=thick, top=thick, bottom=thick)
 
     # ── ROW 1: Title ──
     ws.merge_cells('A1:K1')
@@ -1803,19 +2097,23 @@ def export_flour_sales():
     ws.row_dimensions[2].height = 40
 
     # ── DATA ROWS ──
+    # Coefficients come from flour_sales_settings (editable in the page's
+    # Settings panel) and get baked in as live formulas, not static values,
+    # so the sheet keeps recalculating if you tweak a cell in Excel.
     for row_idx, inv in enumerate(invoices, start=3):
-        col = 1
         values = [
-            inv.get('num'),
-            inv.get('bags'),
-            None,                       # قيمة الدقيق (empty like original)
-            f'=B{row_idx}*1.5',         # نخالة ناعمة كجم
-            f'=D{row_idx}*4',           # قيمة النخالة
-            inv.get('extraBranKg', 0),  # نخالة اضافية كجم
-            f'=F{row_idx}*(235*20)/1000',  # ق نخالة اضافية
-            f'=IF(D{row_idx}<26.1,6,(IF(D{row_idx}<50.1,12,(IF(D{row_idx}<75.1,18,(IF(D{row_idx}<100.1,24,(IF(D{row_idx}<125.1,15,30)))))))))',
-            None,                       # خدمة تموينية
-            inv.get('union', 0) or None,
+            inv['num'],
+            inv['bags'],
+            inv['flourVal'] or None,           # قيمة الدقيق - manual, no formula in source sheet
+            f'=B{row_idx}*{bran_kg_per_bag}',  # نخالة ناعمة كجم
+            f'=B{row_idx}*{bran_rate}',        # قيمة النخالة = bags x rate (NOT kg x rate)
+            inv['extraBranKg'] or None,
+            f'=F{row_idx}*(235*{extra_bran_rate})/1000',
+            (f'=IF(D{row_idx}<{e1l},{e1v},(IF(D{row_idx}<{e2l},{e2v},'
+             f'(IF(D{row_idx}<{e3l},{e3v},(IF(D{row_idx}<{e4l},{e4v},'
+             f'(IF(D{row_idx}<{e5l},{e5v},{e6v}))))))))'),
+            inv['service'] or None,
+            inv['union'] or None,
             f'=H{row_idx}+G{row_idx}+E{row_idx}+C{row_idx}+J{row_idx}+I{row_idx}'
         ]
 
@@ -1831,7 +2129,6 @@ def export_flour_sales():
     load_row  = total_row + 1
     due_row   = load_row + 1
 
-    # اجمالي
     ws.merge_cells(f'A{total_row}:A{total_row}')
     ws.cell(row=total_row, column=1, value='الاجمالي').font = total_font
     ws.cell(row=total_row, column=1).alignment = center
@@ -1854,7 +2151,6 @@ def export_flour_sales():
     ws.cell(row=load_row, column=1).alignment = center
     ws.cell(row=load_row, column=1).fill = total_fill
 
-    load_total_col = get_column_letter(11)
     ws.cell(row=load_row, column=11, value=f'=B{total_row}/8').font = total_font
     ws.cell(row=load_row, column=11).alignment = center
     ws.cell(row=load_row, column=11).fill = total_fill
@@ -1870,23 +2166,17 @@ def export_flour_sales():
     ws.cell(row=due_row, column=11).alignment = center
     ws.cell(row=due_row, column=11).fill = due_fill
 
-    # Apply borders to footer rows
     for row_num in [total_row, load_row, due_row]:
         for c in range(1, 12):
             ws.cell(row=row_num, column=c).border = border
 
-    # ── COLUMN WIDTHS ──
     col_widths = [14, 14, 12, 20, 20, 16, 16, 20, 18, 14, 12]
     for i, w in enumerate(col_widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    # ── FREEZE PANES ──
     ws.freeze_panes = 'A3'
-
-    # ── AUTO FILTER ──
     ws.auto_filter.ref = f'A2:K{last_data_row}'
 
-    # ── OUTPUT ──
     output = BytesIO()
     wb.save(output)
     output.seek(0)
