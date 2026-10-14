@@ -478,11 +478,17 @@
                 <label>{{ t.to_date }}</label>
                 <input type="date" id="revenueEndDate" onchange="loadRevenue(); loadSummary(); loadCharts();">
             </div>
+            <div class="filter-item">
+                <label>{{ t.revenue_source }}</label>
+                <select id="revenueSourceFilter" onchange="renderRevenue()">
+                    <option value="">All / الكل</option>
+                </select>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="loadRevenue()">
                 {{ t.apply }}
             </button>
         </div>
-        
+
         <!-- FIX #2: Add container with max-height -->
         <div class="table-container">
             <table class="data-table">
@@ -941,41 +947,48 @@ function loadRevenue() {
     fetch(`/api/accounting/revenue?start=${start}&end=${end}`)
         .then(r => r.json())
         .then(data => {
-            const tbody = document.getElementById('revenueTable');
-            tbody.innerHTML = '';
-            
-            let total = 0;
-            
-            // Check if sources exist and is array
-            const sources = data.sources || [];
-            
-            sources.forEach(source => {
-                total += source.amount;
-                const row = `
-                    <tr>
-                        <td>${source.date || '-'}</td>
-                        <td>${source.name}</td>
-                        <td>${source.quantity}</td>
-                        <td>${source.rate}</td>
-                        <td>LE ${source.amount.toLocaleString()}</td>
-                        <td>${source.percentage}%</td>
-                        <td>
-                            <button class="btn btn-danger btn-sm" onclick="deleteRevenue(${source.id})">
-                                🗑️
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-            
-            document.getElementById('revenueTotal').textContent = 'LE ' + total.toLocaleString();
+            revenueCache = data.sources || [];
+            const sel = document.getElementById('revenueSourceFilter');
+            const prev = sel.value;
+            const names = [...new Set(revenueCache.map(s => s.name))].sort();
+            sel.innerHTML = '<option value="">All / الكل</option>' +
+                names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
+            sel.value = names.includes(prev) ? prev : '';
+            renderRevenue();
         })
         .catch(err => {
             console.error('Revenue error:', err);
             const tbody = document.getElementById('revenueTable');
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Error loading revenue</td></tr>';
         });
+}
+
+let revenueCache = [];
+
+function renderRevenue() {
+    const tbody = document.getElementById('revenueTable');
+    tbody.innerHTML = '';
+    const f = document.getElementById('revenueSourceFilter').value;
+    const sources = f ? revenueCache.filter(s => s.name === f) : revenueCache;
+    let total = 0;
+    sources.forEach(source => {
+        total += source.amount;
+        tbody.innerHTML += `
+            <tr>
+                <td>${source.date || '-'}</td>
+                <td>${source.name}</td>
+                <td>${source.quantity}</td>
+                <td>${source.rate}</td>
+                <td>LE ${source.amount.toLocaleString()}</td>
+                <td>${source.percentage}%</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRevenue(${source.id})">
+                        🗑️
+                    </button>
+                </td>
+            </tr>`;
+    });
+    document.getElementById('revenueTotal').textContent = 'LE ' + total.toLocaleString();
 }
 
 function loadExpenses() {
